@@ -30,6 +30,7 @@ Auf macOS/Linux alternativ `sh start.sh`. Bei einem Update Abhängigkeiten erneu
 - Vollständige Neuberechnung von Startelf, Einzelplatzalternativen und Bank bei Änderung von Ziel, Formation, Rollen, Filter oder Verfügbarkeit.
 - Fünf Grundformationen: 4-3-3 DM, 4-2-3-1, 4-4-2, 3-4-3, 3-5-2.
 - Jeder taktische Platz besitzt getrennte IP-/OOP-Positionen und Rollen. Jede Tabellenzeile bezeichnet denselben Spieler in beiden Phasen. OOP-Positionen können individuell geändert werden.
+- Spieler auf dem Feld, auf der Bank und unter den Alternativen zeigen ihre **IP- und OOP-Rolle gleichzeitig**. Eine zusätzliche Startelftabelle zeigt beide vollständigen Rollennamen; die Spieleranalyse benennt beide Phasen ausdrücklich. Diese Rollen gehören zum jeweiligen taktischen Einsatz, nicht pauschal zum Spieler.
 - Ausgewählter, erweiterbarer FM26-Rollenkatalog; keine FM24-Duties. Nicht alle FM26-Rollen sind enthalten.
 - Vereinfilter und Auswahl aller eingelesenen primären und weiteren Nationalitäts-IDs. ID-Namen können im JSON mit `nation_names` ergänzt werden. Nationalität ist kein Nachweis der Nationalteam-Spielberechtigung.
 - Namen einzeln sowie Startelf und Bank gesammelt kopieren.

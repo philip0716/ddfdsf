@@ -42,12 +42,27 @@ async function calculate(){
  if(loading)return;
  const own=++revision;const button=$('calculate');button.disabled=true;button.textContent='Elf wird berechnet …';message('');
  try{const response=await api('optimize',config());if(own!==revision)return;result=response;document.querySelector('.results').classList.remove('pending');renderResult();message(response.warnings.join('\n'));}
- catch(e){if(own===revision){result=null;$('pitch').replaceChildren(node('p',e.message,'warning'));$('bench').replaceChildren();message(e.message);}}
+ catch(e){if(own===revision){result=null;$('pitch').replaceChildren(node('p',e.message,'warning'));$('bench').replaceChildren();$('xi-roles').replaceChildren();message(e.message);}}
  finally{button.disabled=false;button.replaceChildren(document.createTextNode('Beste Elf berechnen '),node('span','→'));}
+}
+function rolePair(c,full=false){
+ const pair=node('div',undefined,'role-pair');
+ for(const ph of ['ip','oop']){const row=node('div',undefined,'role-line');row.dataset.phase=ph;
+ const name=catalog.roles[c.slot[ph+'_role']].name;
+ row.title=(ph==='ip'?'In Possession':'Out of Possession')+' · '+c.slot[ph+'_position'].toUpperCase()+' · '+name;
+ row.append(node('span',full?(ph==='ip'?'In Possession':'Out of Possession'):ph.toUpperCase(),'role-phase'),node('span',c.slot[ph+'_position'].toUpperCase()+' · '+name,'role-value'));pair.append(row);}
+ return pair;
+}
+function renderRoleOverview(){
+ const root=$('xi-roles');root.replaceChildren();if(!result)return;
+ const table=node('table');const head=node('thead'),tr=node('tr');for(const title of ['Spieler','In Possession Player Role','Out of Possession Player Role'])tr.append(node('th',title));head.append(tr);table.append(head);const body=node('tbody');
+ for(const c of result.xi){const row=node('tr'),name=node('td'),button=node('button',c.player.name);button.onclick=()=>detail(c);name.append(button);row.append(name);
+ for(const ph of ['ip','oop'])row.append(node('td',c.slot[ph+'_position'].toUpperCase()+' · '+catalog.roles[c.slot[ph+'_role']].name));body.append(row);}
+ table.append(body);root.append(table);
 }
 function renderResult(){
  $('score').textContent=(result.total_score/11).toFixed(1);$('defense').textContent=result.defense_average.toFixed(1);$('lineup-title').textContent=result.objective==='potential'?'Talente mit Zukunft':'Form, die den Unterschied macht';$('copy-xi').disabled=false;$('copy-bench').disabled=false;
- renderPitch();$('bench').replaceChildren();result.bench.forEach(c=>{const b=node('button');b.append(node('small',c.slot.ip_position.toUpperCase()+' · '+c.score.toFixed(1)),node('b',c.player.name),node('small',c.player.age+' Jahre · CA '+(c.player.ca??'?')+' / PA '+(c.pa??'?')));b.onclick=()=>detail(c);$('bench').append(b);});
+ renderPitch();renderRoleOverview();$('bench').replaceChildren();result.bench.forEach(c=>{const b=node('button');b.append(node('small',c.slot.ip_position.toUpperCase()+' · '+c.score.toFixed(1)),node('b',c.player.name),node('small',c.player.age+' Jahre · CA '+(c.player.ca??'?')+' / PA '+(c.pa??'?')),rolePair(c));b.onclick=()=>detail(c);$('bench').append(b);});
  renderRoster();
 }
 function line(pos){if(pos==='gk')return 0;if(['dl','dc','dr'].includes(pos))return 1;if(['wbl','dm','wbr'].includes(pos))return 2;if(['ml','mc','mr'].includes(pos))return 3;if(['aml','amc','amr'].includes(pos))return 4;return 5;}
@@ -56,11 +71,11 @@ function renderPitch(){
  const pitch=$('pitch');pitch.replaceChildren(node('div',undefined,'pitch-line'),node('div',undefined,'pitch-circle'));if(!result)return;
  const lines=new Map();for(const c of result.xi){const p=c.slot[phase+'_position'],l=line(p);if(!lines.has(l))lines.set(l,[]);lines.get(l).push(c);}
  for(const [l,items]of lines){items.sort((a,b)=>side(a.slot[phase+'_position'])-side(b.slot[phase+'_position'])||a.slot_index-b.slot_index);
- items.forEach((c,i)=>{const b=node('button',undefined,'player');b.style.width=Math.min(27,90/items.length)+'%';b.style.left=((i+1)*100/(items.length+1))+'%';b.style.top=(89-l*15.5)+'%';const p=c.player;const r=catalog.roles[c.slot[phase+'_role']];b.title=p.name+' · '+r.name+' · '+c.score.toFixed(1);b.append(node('span',c.score.toFixed(1),'rating'),node('b',p.name),node('small',c.slot[phase+'_position'].toUpperCase()+' · '+r.name));if(p.status==='unknown')b.append(node('small','Verfügbarkeit ungeprüft','unconfirmed'));b.onclick=()=>detail(c);pitch.append(b);});}
+ items.forEach((c,i)=>{const b=node('button',undefined,'player');b.style.width=Math.min(27,90/(items.length+1))+'%';b.style.left=((i+1)*100/(items.length+1))+'%';b.style.top=(89-l*15.5)+'%';const p=c.player;const r=catalog.roles[c.slot[phase+'_role']];b.title=p.name+' · '+r.name+' · '+c.score.toFixed(1);b.append(node('span',c.score.toFixed(1),'rating'),node('b',p.name),rolePair(c));if(p.status==='unknown')b.append(node('small','Verfügbarkeit ungeprüft','unconfirmed'));b.onclick=()=>detail(c);pitch.append(b);});}
 }
 async function copy(text){try{await navigator.clipboard.writeText(text);message('Namen kopiert.');}catch{message('Kopieren im Browser nicht möglich. Namen im folgenden Fenster markieren.');const d=$('detail-content');d.replaceChildren(node('h2','Namen kopieren'));const textarea=node('textarea');textarea.value=text;textarea.rows=13;textarea.style.width='100%';d.append(textarea);if(!$('detail').open)$('detail').showModal();textarea.select();}}
 function detail(c){
- const root=$('detail-content');root.replaceChildren(node('h2',c.player.name),node('p',c.slot.ip_position.toUpperCase()+' → '+c.slot.oop_position.toUpperCase()+' · '+catalog.roles[c.slot.ip_role].name+' / '+catalog.roles[c.slot.oop_role].name));root.append(node('div',c.score.toFixed(1)+' / 100','detail-score'));
+ const root=$('detail-content');root.replaceChildren(node('h2',c.player.name),rolePair(c,true));root.append(node('div',c.score.toFixed(1)+' / 100','detail-score'));
  const cp=node('button','Name kopieren');cp.onclick=()=>copy(c.player.name);root.append(cp);
  if(result.objective==='potential'){
  const figures=node('div',undefined,'figures');for(const [title,value]of [['PA-Obergrenze',c.pa],['CA-Szenario',c.projected_ca],['Entwicklungsscore',c.score.toFixed(1)]]){const div=node('div');div.append(node('small',title),node('b',value??'?'));figures.append(div);}root.append(figures,node('p','Szenarioband: '+(c.projection_interval||[]).join('–')+' CA · '+c.projection_label+'. Attributzuwächse sind eine vereinfachte Annahme.','hint'));
@@ -70,7 +85,7 @@ function detail(c){
  const history=node('div',undefined,'history');const matches=[...(c.player.matches||[])].filter(m=>m.rating!=null&&m.date<=data.date).sort((a,b)=>a.date.localeCompare(b.date)).slice(-20);for(const m of matches){const bar=node('span');bar.style.height=Math.max(5,(m.rating-4)*12)+'px';bar.title=m.date+' · '+m.rating+' · '+m.minutes+' Min.';history.append(bar);}root.append(history,node('p','Gespeicherte Noten, älteste links. Der Formwert nutzt maximal 20 Spiele aus 180 Tagen.','hint'));
  root.append(node('p','Attributabdeckung IP '+(c.coverage.ip*100).toFixed(0)+' % / OOP '+(c.coverage.oop*100).toFixed(0)+' % · Entwicklungsbedingungen '+(c.coverage.development*100).toFixed(0)+' %','hint'));
  for(const text of [...c.warnings,...(c.player.notes||[])])root.append(node('p',text,'warning'));
- const alternatives=result.alternatives[c.slot_index]||[];root.append(node('h3','Alternativen außerhalb der Startelf'));for(const a of alternatives){const b=node('button',a.player.name+' · '+a.score.toFixed(1));b.onclick=()=>detail(a);root.append(b);}root.append(node('p','Einzelplatz-Alternativen. Ein Wechsel kann die optimale Gesamtverteilung oder defensive Mindestqualität verändern.','hint'));
+ const alternatives=result.alternatives[c.slot_index]||[];root.append(node('h3','Alternativen außerhalb der Startelf'));for(const a of alternatives){const b=node('button',undefined,'alternative-card');b.append(node('b',a.player.name+' · '+a.score.toFixed(1)),rolePair(a));b.onclick=()=>detail(a);root.append(b);}root.append(node('p','Einzelplatz-Alternativen. Ein Wechsel kann die optimale Gesamtverteilung oder defensive Mindestqualität verändern.','hint'));
  if(!$('detail').open)$('detail').showModal();
 }
 function renderRoster(){
