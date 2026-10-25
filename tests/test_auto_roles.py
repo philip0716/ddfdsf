@@ -49,3 +49,16 @@ class AutoRoleTests(unittest.TestCase):
     def test_invalid_auto_flag_rejected(self):
         slots=slots_for('4-3-3 DM');slots[0]['ip_auto']='true'
         with self.assertRaises(ValueError):optimize(demo(),dict(slots=slots))
+
+class FM26RoleCatalogueTests(unittest.TestCase):
+    def test_new_roles_are_in_their_actual_phase(self):
+        for key in ['ip:Inside Forward','ip:Free Role','ip:Deep-Lying Playmaker','oop:Wide Outlet Winger','oop:Dropping Defensive Midfielder']:
+            self.assertIn(key,ROLES)
+            self.assertEqual(ROLES[key]['phase'],key.split(':')[0])
+    def test_advanced_wing_back_is_not_a_full_back_slot(self):
+        self.assertEqual(set(ROLES['ip:Advanced Wing-Back']['positions']),{'wbl','wbr'})
+    def test_legacy_role_names_and_duties_are_not_exposed(self):
+        legacy=['Mezzala','Trequartista','Enganche','Complete Wing-Back','Advanced Forward']
+        for r in ROLES.values():
+            self.assertNotIn(r['name'],legacy)
+            self.assertNotIn('duty',r)

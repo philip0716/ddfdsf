@@ -10,7 +10,7 @@ role('ip','Centre-Back','dc',marking=3,tackling=3,positioning=3,heading=2,jumpin
 role('ip','Overlapping Centre-Back','dc',passing=2,dribbling=2,crossing=2,pace=2,stamina=2,tackling=2,marking=2)
 role('ip','Full-Back','dl dr',crossing=2,passing=2,stamina=2,pace=2,tackling=2,positioning=2)
 role('ip','Playmaking Wing-Back','dl dr wbl wbr',passing=3,vision=3,decisions=2,technique=2,stamina=2)
-role('ip','Advanced Wing-Back','dl dr wbl wbr',crossing=3,dribbling=2,off_the_ball=3,pace=2,stamina=3)
+role('ip','Advanced Wing-Back','wbl wbr',crossing=3,dribbling=2,off_the_ball=3,pace=2,stamina=3)
 role('ip','Defensive Midfielder','dm',positioning=3,tackling=3,passing=2,decisions=2,teamwork=2)
 role('ip','Midfield Playmaker','mc',passing=3,vision=3,technique=2,decisions=3,first_touch=2)
 role('ip','Wide Central Midfielder','mc',passing=2,off_the_ball=3,dribbling=2,stamina=2,crossing=2)
@@ -35,6 +35,27 @@ role('oop','Tracking Winger','aml amr',stamina=3,work_rate=3,marking=3,positioni
 role('oop','Tracking Attacking Midfielder','amc',stamina=3,work_rate=3,marking=3,positioning=2)
 role('oop','Tracking Centre Forward','stc',work_rate=3,stamina=3,marking=3,teamwork=2)
 role('oop','Central Outlet Centre Forward','stc',anticipation=3,off_the_ball=3,decisions=3,pace=2)
+
+# Additional FM26 roles. Names/phases follow the FM26 role reference;
+# numerical attribute weights remain this application's own model.
+role('ip','Ball-Playing Centre-Back','dc',passing=3,composure=3,vision=2,positioning=3,tackling=2,heading=2)
+role('ip','Inside Wing-Back','dl dr wbl wbr',passing=3,decisions=3,positioning=3,teamwork=2,tackling=2)
+role('ip','Inside Full-Back','dl dr',positioning=3,marking=3,tackling=3,heading=2,strength=2)
+role('ip','Inside Forward','aml amr',dribbling=3,first_touch=2,technique=2,off_the_ball=3,composure=3,acceleration=2)
+role('ip','Inside Winger','ml mr aml amr',dribbling=3,first_touch=3,technique=3,composure=2,teamwork=2,agility=2)
+role('ip','Advanced Playmaker','mc amc',passing=3,vision=3,decisions=3,first_touch=2,technique=2,composure=2)
+role('ip','Free Role','amc',flair=3,vision=3,dribbling=2,passing=2,technique=3,off_the_ball=2)
+role('ip','Deep-Lying Playmaker','dm',passing=3,vision=3,decisions=3,first_touch=2,technique=2,teamwork=2)
+role('ip','Centre Forward','stc',finishing=3,first_touch=2,heading=2,composure=3,off_the_ball=3,strength=2)
+role('ip','Deep-Lying Forward','stc',first_touch=3,technique=3,passing=2,composure=3,off_the_ball=2,strength=2)
+role('ip','False Nine','stc',passing=3,vision=3,decisions=3,first_touch=2,dribbling=2,off_the_ball=2)
+role('ip','Poacher','stc',finishing=3,anticipation=3,composure=3,off_the_ball=3,acceleration=2)
+role('oop','Wide Outlet Winger','aml amr',anticipation=3,off_the_ball=3,decisions=3,pace=3,concentration=2)
+role('oop','Inside Outlet Winger','aml amr',anticipation=3,off_the_ball=3,decisions=3,balance=3,concentration=2)
+role('oop','Wide Covering Defensive Midfielder','dm',positioning=3,anticipation=3,work_rate=3,agility=2,stamina=2,tackling=2)
+role('oop','Dropping Defensive Midfielder','dm',positioning=3,marking=3,anticipation=3,heading=2,jumping_reach=2,strength=2)
+role('oop','Wide Covering Central Midfielder','mc',marking=3,tackling=3,work_rate=3,agility=2,stamina=2,decisions=2)
+role('oop','Splitting Outlet Centre Forward','stc',anticipation=3,off_the_ball=3,decisions=3,pace=3,concentration=2)
 
 FORMATIONS = {
  '4-3-3 DM': ['gk','dl','dc','dc','dr','dm','mc','mc','aml','amr','stc'],

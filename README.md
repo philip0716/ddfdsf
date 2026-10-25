@@ -31,7 +31,7 @@ Auf macOS/Linux alternativ `sh start.sh`. Bei einem Update Abhängigkeiten erneu
 - Fünf Grundformationen: 4-3-3 DM, 4-2-3-1, 4-4-2, 3-4-3, 3-5-2.
 - Jeder taktische Platz besitzt getrennte IP-/OOP-Positionen und Rollen. Standard ist **Automatisch**: Für jeden Spieler und jeden Platz werden die kompatiblen IP- und OOP-Rollen einzeln bewertet und die besten übernommen. Konkret ausgewählte Rollen bleiben pro Phase fixiert. **Alle Rollen automatisch wählen** setzt die manuellen Rollenbindungen zurück. Die Vorschau unter dem Rollenfeld zeigt die tatsächlich ausgewählte Rolle. Jede Tabellenzeile bezeichnet denselben Spieler in beiden Phasen. OOP-Positionen können individuell geändert werden.
 - Spieler auf dem Feld, auf der Bank und unter den Alternativen zeigen ihre **IP- und OOP-Rolle gleichzeitig**. Eine zusätzliche Startelftabelle zeigt beide vollständigen Rollennamen; die Spieleranalyse benennt beide Phasen ausdrücklich. Diese Rollen gehören zum jeweiligen taktischen Einsatz, nicht pauschal zum Spieler.
-- Ausgewählter, erweiterbarer FM26-Rollenkatalog; keine FM24-Duties. Nicht alle FM26-Rollen sind enthalten.
+- Ausgewählter, erweiterbarer FM26-Rollenkatalog mit getrennten IP-/OOP-Listen, u. a. Inside Forward, Free Role, Deep-Lying Playmaker, Wide Outlet Winger und Dropping Defensive Midfielder; keine FM24-Duties. Nicht alle FM26-Rollen sind enthalten.
 - Vereinfilter und Auswahl aller eingelesenen primären und weiteren Nationalitäts-IDs. ID-Namen können im JSON mit `nation_names` ergänzt werden. Nationalität ist kein Nachweis der Nationalteam-Spielberechtigung.
 - Namen einzeln sowie Startelf und Bank gesammelt kopieren.
 - Manuelle Verfügbarkeit: ungeprüft, verfügbar, verletzt, gesperrt, nicht verfügbar. Änderungen werden beim Kaderexport mitgesichert.
@@ -184,7 +184,7 @@ python -m unittest discover -s tests -v
 node --check web/app.js
 ```
 
-Testumfang: 40 automatisierte Tests mit synthetischen Spielern, Adapter mit kontrollierten Datensätzen, HTTP-API und Fehlerfällen. Zusätzlich wurden Zielwechsel, Kopieren, Spieleranalyse, OOP-Ansicht, Formationswechsel, Verfügbarkeitsänderung und mobile Seitenbreite in Chromium geprüft. Zusätzlicher Praxistest am 25.10.2026: Ein echter lokaler FM26-Spielstand wurde über den Adapter erfolgreich eingelesen. Beide Optimierungsziele lieferten elf Starter und neun Ersatzspieler; Startelf und mehrere IP-/OOP-Rollen unterschieden sich zwischen den Zielen. Die Originaldatei und die persönlichen Spielerdaten wurden nicht ins Repository übernommen. Dieser Test belegt den getesteten Spielstand, keine allgemeine Kompatibilität mit sämtlichen FM-Builds. Ein Windows-Systemtest steht weiterhin aus.
+Testumfang: 43 automatisierte Tests mit synthetischen Spielern, Adapter mit kontrollierten Datensätzen, HTTP-API und Fehlerfällen. Zusätzlich wurden Zielwechsel, Kopieren, Spieleranalyse, OOP-Ansicht, Formationswechsel, Verfügbarkeitsänderung und mobile Seitenbreite in Chromium geprüft. Zusätzlicher Praxistest am 25.10.2026: Ein echter lokaler FM26-Spielstand wurde über den Adapter erfolgreich eingelesen. Beide Optimierungsziele lieferten elf Starter und neun Ersatzspieler; Startelf und mehrere IP-/OOP-Rollen unterschieden sich zwischen den Zielen. Die Originaldatei und die persönlichen Spielerdaten wurden nicht ins Repository übernommen. Dieser Test belegt den getesteten Spielstand, keine allgemeine Kompatibilität mit sämtlichen FM-Builds. Ein Windows-Systemtest steht weiterhin aus.
 
 Optionaler Browser-Smoke-Test (zusätzlich Node.js benötigt):
 
@@ -202,6 +202,7 @@ Der Server bindet ausschließlich `127.0.0.1`, prüft Host/Origin und eine eigen
 
 - [fmsave API und Grenzen](https://github.com/rhiever/fmsave), getestete Paketversion 0.5.11.
 - [Offizielle FM26-Erklärung zu IP-/OOP-Formationen und Rollen](https://www.footballmanager.com/fm26/features/possession-out-possession-fm26s-new-tactical-evolution).
+- [FM26-Rollen und Phasenzuordnung anhand der Spielanzeigen im SI-Forum](https://community.sports-interactive.com/forums/topic/600770-football-manager-26-roles-attributes/).
 - [OOP-Rollenbeobachtungen des Guide-Autors im SI-Forum](https://community.sports-interactive.com/forums/topic/594846-fm26-out-of-possession-player-roles-guide/).
 
 Eigene Bewertungsgewichte und Referenzziele, keine offiziellen FM26-Formeln. Inoffizielles Fanprojekt; keine Verbindung zu Sports Interactive oder SEGA.
