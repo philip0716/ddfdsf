@@ -18,3 +18,5 @@
 .pending #xi-roles{opacity:.35}
 @media(max-width:1000px){.pitch{min-height:840px}}
 @media(max-width:760px){.pitch{min-height:870px}.player .role-line{font-size:8px}.player .role-phase{font-size:7px}}
+
+.role-preview{display:block;max-width:250px;white-space:normal;margin-top:5px;color:var(--green)}

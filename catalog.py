@@ -46,6 +46,6 @@ FORMATIONS = {
 def default_role(phase, position):
     return next(k for k,v in ROLES.items() if v['phase']==phase and position in v['positions'])
 def slots_for(formation):
-    return [dict(id=str(i),ip_position=p,oop_position=p,
+    return [dict(id=str(i),ip_position=p,oop_position=p,ip_auto=True,oop_auto=True,
                  ip_role=default_role('ip',p),oop_role=default_role('oop',p))
             for i,p in enumerate(FORMATIONS[formation])]

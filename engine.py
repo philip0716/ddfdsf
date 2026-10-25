@@ -131,8 +131,18 @@ def form(p, today, position):
     return dict(value=f,source=source,games=len(rows),minutes=sum(m['minutes'] for _,m in rows),
                 confidence=clip(confidence*100),rating=rating,kpi=kpi,reliability=reliability)
 
+def resolve_roles(p,slot,gain=0):
+    resolved=dict(slot)
+    for phase in ['ip','oop']:
+        if not slot.get(phase+'_auto',False): continue
+        candidates=[key for key,r in ROLES.items() if r['phase']==phase and slot[phase+'_position'] in r['positions']]
+        def rank(key):
+            value,coverage=role_score(p,key,gain)
+            return (value,coverage,key==slot[phase+'_role'])
+        resolved[phase+'_role']=max(candidates,key=rank)
+    return resolved
+
 def evaluate(p,slot,objective,today,horizon=5):
-    ip,ic=role_score(p,slot['ip_role']); oop,oc=role_score(p,slot['oop_role'])
     pos=min(p['positions'].get(slot['ip_position'],0),p['positions'].get(slot['oop_position'],0))*5
     ready,rc=blend([(7,p.get('fitness')),(3,p.get('sharpness'))])
     f=form(p,today,slot['ip_position']); d,dc=development(p); y=window(p)
@@ -143,6 +153,8 @@ def evaluate(p,slot,objective,today,horizon=5):
         projection=min(pa,ca+increment) if pa>=ca else ca
         interval=[round(ca+increment*.5,1),round(min(max(pa,ca),ca+increment*1.5),1)]
         gain=min(3,increment/40)
+    slot=resolve_roles(p,slot,gain if objective=='potential' else 0)
+    ip,ic=role_score(p,slot['ip_role']); oop,oc=role_score(p,slot['oop_role'])
     fi,fic=role_score(p,slot['ip_role'],gain); fo,foc=role_score(p,slot['oop_role'],gain)
     if objective=='potential':
         if pa is None or ca is None or y is None: return None
@@ -157,7 +169,8 @@ def evaluate(p,slot,objective,today,horizon=5):
     if ic<1 or oc<1: missing.append('Rollenattribute unvollständig · neutraler Prior 50 bei vollständigem Fehlen')
     if dc<1: missing.append('Entwicklungsbedingungen unvollständig')
     if not f['games']: missing.append(f['source'])
-    return dict(score=round(sum(weights[k]*v for k,v in parts.items()),4),
+    return dict(resolved_slot=slot,role_selection={phase:'automatic' if slot.get(phase+'_auto',False) else 'manual' for phase in ['ip','oop']},
+                score=round(sum(weights[k]*v for k,v in parts.items()),4),
                 parts={k:round(v,2) for k,v in parts.items()},weights=weights,form=f,
                 pa=pa,projected_ca=round(projection,1) if projection is not None else None,
                 projection_interval=interval,projection_label='Modellszenario, keine FM-Prognose',
@@ -168,6 +181,7 @@ def validate_slots(slots):
     if not isinstance(slots,list) or len(slots)!=11: raise ValueError('Genau elf taktische Plätze erforderlich.')
     for s in slots:
         for phase in ['ip','oop']:
+            if type(s.get(phase+'_auto',False)) is not bool: raise ValueError('Automatische Rollenwahl muss true oder false sein.')
             pos=s.get(phase+'_position'); key=s.get(phase+'_role')
             if pos not in POSITIONS or key not in ROLES or ROLES[key]['phase']!=phase or pos not in ROLES[key]['positions']:
                 raise ValueError('Rolle und Position passen nicht zusammen.')
@@ -232,7 +246,7 @@ def optimize(data, config):
     selected={i for i,j in chosen}
     def card(i,j):
         p=players[i]
-        return dict(player=p,slot=slots[j],slot_index=j,**results[i,j])
+        return dict(player=p,slot=results[i,j].get('resolved_slot',slots[j]),slot_index=j,**results[i,j])
     xi=[card(i,j) for i,j in chosen]
     # Bench: first cover GK/defence/midfield/attack; then best remaining scores.
     candidates=[]

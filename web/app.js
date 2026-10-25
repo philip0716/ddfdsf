@@ -9,7 +9,7 @@ function option(select,value,text){const o=node('option',text);o.value=value;sel
 const squadLabels={senior:'Senior Squad',second:'2nd Squad',u19:'U19 Squad',unknown:'Nicht zugeordnet'};
 function playerSquad(p){return data.squad_mappings?.[String(p.club_id||'')]?.[String(p.team_id)]||p.squad||'unknown';}
 function selectedPlayers(){return data.players.filter(p=>(!$('club').value||String(p.club_id)===$('club').value)&&(!$('squad').value||playerSquad(p)===$('squad').value)&&(!$('nation').value||(p.nation_ids||[]).map(String).includes($('nation').value)));}
-function invalidate(){revision++;result=null;document.querySelector('.results').classList.add('pending');$('copy-xi').disabled=true;$('copy-bench').disabled=true;$('score').textContent='—';$('defense').textContent='—';clearTimeout(timer);}
+function invalidate(){revision++;result=null;renderRolePreviews();document.querySelector('.results').classList.add('pending');$('copy-xi').disabled=true;$('copy-bench').disabled=true;$('score').textContent='—';$('defense').textContent='—';clearTimeout(timer);}
 function schedule(){invalidate();renderRoster();timer=setTimeout(calculate,250);}
 function renderData(){
  overrides={};result=null;data.squad_mappings=data.squad_mappings||{};$('squad').value='';
@@ -33,9 +33,17 @@ function renderTactics(){
  $('tactics').replaceChildren();slots.forEach((s,i)=>{const tr=node('tr');tr.append(node('td',String(i+1).padStart(2,'0')));for(const ph of ['ip','oop']){
  const td=node('td'),pos=node('select');pos.setAttribute('aria-label',`${ph.toUpperCase()}-Position Platz ${i+1}`);for(const p of catalog.positions)option(pos,p,p.toUpperCase());pos.value=s[ph+'_position'];td.append(pos);tr.append(td);
  const rt=node('td'),select=node('select');select.setAttribute('aria-label',`${ph.toUpperCase()}-Rolle Platz ${i+1}`);
- function fill(){select.replaceChildren();for(const [key,r] of Object.entries(catalog.roles))if(r.phase===ph&&r.positions.includes(s[ph+'_position']))option(select,key,r.name);if(![...select.options].some(o=>o.value===s[ph+'_role']))s[ph+'_role']=select.options[0].value;select.value=s[ph+'_role'];}
- fill();pos.onchange=()=>{s[ph+'_position']=pos.value;fill();schedule();};select.onchange=()=>{s[ph+'_role']=select.value;schedule();};rt.append(select);tr.append(rt);
+ function fill(){select.replaceChildren();option(select,'auto','Automatisch · passend zum Spieler');
+ const keys=Object.entries(catalog.roles).filter(([key,r])=>r.phase===ph&&r.positions.includes(s[ph+'_position'])).map(([key,r])=>{option(select,key,r.name);return key;});
+ if(!keys.includes(s[ph+'_role'])){s[ph+'_role']=keys[0];s[ph+'_auto']=true;}
+ select.value=s[ph+'_auto']?'auto':s[ph+'_role'];}
+ const preview=node('small','Noch nicht berechnet','role-preview');preview.dataset.slot=i;preview.dataset.phase=ph;
+ fill();pos.onchange=()=>{s[ph+'_position']=pos.value;fill();schedule();};select.onchange=()=>{s[ph+'_auto']=select.value==='auto';if(!s[ph+'_auto'])s[ph+'_role']=select.value;schedule();};rt.append(select,preview);tr.append(rt);
  }$('tactics').append(tr);});
+}
+function renderRolePreviews(){
+ for(const preview of document.querySelectorAll('.role-preview')){const c=result?.xi.find(c=>c.slot_index===Number(preview.dataset.slot));const ph=preview.dataset.phase;
+ preview.textContent=c?(c.role_selection?.[ph]==='automatic'?'Automatisch: ':'Fixiert: ')+catalog.roles[c.slot[ph+'_role']].name:'Wird neu berechnet …';}
 }
 function config(){return {slots,objective:$('objective').value,club:$('club').value,nation:$('nation').value,squad:$('squad').value,squad_mappings:data.squad_mappings,bench_size:Number($('bench-size').value),min_position:Number($('min-position').value),min_defense:Number($('min-defense').value),min_fitness:Number($('min-fitness').value),horizon:Number($('horizon').value),only_confirmed:$('confirmed').checked,overrides};}
 async function calculate(){
@@ -50,6 +58,7 @@ function rolePair(c,full=false){
  for(const ph of ['ip','oop']){const row=node('div',undefined,'role-line');row.dataset.phase=ph;
  const name=catalog.roles[c.slot[ph+'_role']].name;
  row.title=(ph==='ip'?'In Possession':'Out of Possession')+' · '+c.slot[ph+'_position'].toUpperCase()+' · '+name;
+ row.dataset.selection=c.role_selection?.[ph]||'manual';
  row.append(node('span',full?(ph==='ip'?'In Possession':'Out of Possession'):ph.toUpperCase(),'role-phase'),node('span',c.slot[ph+'_position'].toUpperCase()+' · '+name,'role-value'));pair.append(row);}
  return pair;
 }
@@ -62,7 +71,7 @@ function renderRoleOverview(){
 }
 function renderResult(){
  $('score').textContent=(result.total_score/11).toFixed(1);$('defense').textContent=result.defense_average.toFixed(1);$('lineup-title').textContent=result.objective==='potential'?'Talente mit Zukunft':'Form, die den Unterschied macht';$('copy-xi').disabled=false;$('copy-bench').disabled=false;
- renderPitch();renderRoleOverview();$('bench').replaceChildren();result.bench.forEach(c=>{const b=node('button');b.append(node('small',c.slot.ip_position.toUpperCase()+' · '+c.score.toFixed(1)),node('b',c.player.name),node('small',c.player.age+' Jahre · CA '+(c.player.ca??'?')+' / PA '+(c.pa??'?')),rolePair(c));b.onclick=()=>detail(c);$('bench').append(b);});
+ renderPitch();renderRoleOverview();renderRolePreviews();$('bench').replaceChildren();result.bench.forEach(c=>{const b=node('button');b.append(node('small',c.slot.ip_position.toUpperCase()+' · '+c.score.toFixed(1)),node('b',c.player.name),node('small',c.player.age+' Jahre · CA '+(c.player.ca??'?')+' / PA '+(c.pa??'?')),rolePair(c));b.onclick=()=>detail(c);$('bench').append(b);});
  renderRoster();
 }
 function line(pos){if(pos==='gk')return 0;if(['dl','dc','dr'].includes(pos))return 1;if(['wbl','dm','wbr'].includes(pos))return 2;if(['ml','mc','mr'].includes(pos))return 3;if(['aml','amc','amr'].includes(pos))return 4;return 5;}
@@ -104,6 +113,7 @@ $('upload').onchange=importFile;$('calculate').onclick=()=>{invalidate();calcula
 $('demo').onclick=async()=>{if(loading)return;invalidate();try{data=await api('demo',{});renderData();}catch(e){message(e.message);}};
 $('objective').onchange=()=>{const potential=$('objective').value==='potential';$('objective-help').textContent=potential?'PA, Entwicklungsspielraum und zukünftige Rollenpassung stehen im Vordergrund.':'Aktuelle Leistungen zählen am stärksten. Rollen, Positionen und Fitness bleiben Teil der Auswahl.';$('horizon').disabled=!potential;schedule();};
 for(const id of ['club','nation','squad','bench-size','horizon','min-position','min-defense','min-fitness','confirmed'])$(id).onchange=schedule;
+$('auto-roles').onclick=()=>{for(const s of slots){s.ip_auto=true;s.oop_auto=true;}renderTactics();schedule();};
 $('formation').onchange=()=>{slots=structuredClone(catalog.formations[$('formation').value]);renderTactics();schedule();};
 $('phase-ip').onclick=()=>{phase='ip';$('phase-ip').classList.add('active');$('phase-oop').classList.remove('active');renderPitch();};$('phase-oop').onclick=()=>{phase='oop';$('phase-oop').classList.add('active');$('phase-ip').classList.remove('active');renderPitch();};
 $('copy-xi').onclick=()=>result&&copy(result.xi.map(c=>c.player.name).join('\n'));$('copy-bench').onclick=()=>result&&copy(result.bench.map(c=>c.player.name).join('\n'));$('search').oninput=renderRoster;$('close-detail').onclick=()=>$('detail').close();

@@ -29,7 +29,7 @@ Auf macOS/Linux alternativ `sh start.sh`. Bei einem Update Abhängigkeiten erneu
 - Kaderauswahl **Senior Squad**, **2nd Squad**, **U19 Squad**, alle Kader oder nicht zugeordnet. Der Filter gilt für Startelf, Bank, Alternativen und Spielerliste.
 - Vollständige Neuberechnung von Startelf, Einzelplatzalternativen und Bank bei Änderung von Ziel, Formation, Rollen, Filter oder Verfügbarkeit.
 - Fünf Grundformationen: 4-3-3 DM, 4-2-3-1, 4-4-2, 3-4-3, 3-5-2.
-- Jeder taktische Platz besitzt getrennte IP-/OOP-Positionen und Rollen. Jede Tabellenzeile bezeichnet denselben Spieler in beiden Phasen. OOP-Positionen können individuell geändert werden.
+- Jeder taktische Platz besitzt getrennte IP-/OOP-Positionen und Rollen. Standard ist **Automatisch**: Für jeden Spieler und jeden Platz werden die kompatiblen IP- und OOP-Rollen einzeln bewertet und die besten übernommen. Konkret ausgewählte Rollen bleiben pro Phase fixiert. **Alle Rollen automatisch wählen** setzt die manuellen Rollenbindungen zurück. Die Vorschau unter dem Rollenfeld zeigt die tatsächlich ausgewählte Rolle. Jede Tabellenzeile bezeichnet denselben Spieler in beiden Phasen. OOP-Positionen können individuell geändert werden.
 - Spieler auf dem Feld, auf der Bank und unter den Alternativen zeigen ihre **IP- und OOP-Rolle gleichzeitig**. Eine zusätzliche Startelftabelle zeigt beide vollständigen Rollennamen; die Spieleranalyse benennt beide Phasen ausdrücklich. Diese Rollen gehören zum jeweiligen taktischen Einsatz, nicht pauschal zum Spieler.
 - Ausgewählter, erweiterbarer FM26-Rollenkatalog; keine FM24-Duties. Nicht alle FM26-Rollen sind enthalten.
 - Vereinfilter und Auswahl aller eingelesenen primären und weiteren Nationalitäts-IDs. ID-Namen können im JSON mit `nation_names` ergänzt werden. Nationalität ist kein Nachweis der Nationalteam-Spielberechtigung.
@@ -83,6 +83,8 @@ Positions-KPIs sind normierte Saisonraten. Referenzziele für 100 Punkte:
 Bekannte Kennzahlen werden gleich gewichtet und gekappt. Bei wenigen Saisonminuten wird der KPI-Wert mit `Minuten/(Minuten+450)` zur neutralen Basis 50 geglättet. Dies ist ein einfaches Modell mit festen Referenzzielen, keine Liga- oder Gegnerstärkenbereinigung.
 
 Verlässlichkeit = 50 % Notenkonstanz (`100 − 35 × Standardabweichung`, ab drei Noten), 30 % Saisonminuten (`100 × Minuten/900`, gekappt), 20 % zeitgewichtete Evidenz (`100 × Σw/8`, gekappt). Form-Datenvertrauen ist ein separat ausgewiesener heuristischer Abdeckungswert, keine statistisch kalibrierte Wahrscheinlichkeit.
+
+Bei automatischer Rollenwahl wird die beste kompatible Rolle für das jeweilige Spielerprofil ermittelt, bevor dessen Spieler-Platz-Score in die globale Optimierung eingeht. Das Formziel verwendet aktuelle Attribute, das Potenzialziel das beschriebene zukünftige Attribut-Szenario. Die berechnete Rollenwahl wird zusammen mit dem Score auf Startelf, Bank, Alternativen und Vorschau übernommen. Vorgegebene Positionspaare bleiben erhalten. Ohne Auto-Flag bleiben bestehende API-Aufrufe bei fixierten Rollen. Gleiche optimale Rollen dürfen erhalten bleiben; ein Wechsel des Spielers oder Optimierungsziels erzwingt keine künstlich anderen Rollen. Der kleine Rollenkatalog bietet auf manchen Positionen nur eine zulässige Rolle.
 
 IP-/OOP-Eignung: gewichteter Mittelwert der im Rollenkatalog hinterlegten Attribute, mit `(Attribut−1)/19 × 100`. Position: der niedrigere Vertrautheitswert beider Phasen × 5. Einsatzbereitschaft: 70 % Fitness und 30 % Match Sharpness.
 
@@ -182,7 +184,7 @@ python -m unittest discover -s tests -v
 node --check web/app.js
 ```
 
-Testumfang: 35 automatisierte Tests mit synthetischen Spielern, Adapter mit kontrollierten Datensätzen, HTTP-API und Fehlerfällen. Zusätzlich wurden Zielwechsel, Kopieren, Spieleranalyse, OOP-Ansicht, Formationswechsel, Verfügbarkeitsänderung und mobile Seitenbreite in Chromium geprüft. Kein erfolgreich gelesener echter `.fm`-Spielstand und kein Windows-Systemtest sind durch diese Tests belegt. Echte Save-Kompatibilität muss mit dem jeweiligen Spielstand geprüft werden.
+Testumfang: 40 automatisierte Tests mit synthetischen Spielern, Adapter mit kontrollierten Datensätzen, HTTP-API und Fehlerfällen. Zusätzlich wurden Zielwechsel, Kopieren, Spieleranalyse, OOP-Ansicht, Formationswechsel, Verfügbarkeitsänderung und mobile Seitenbreite in Chromium geprüft. Kein erfolgreich gelesener echter `.fm`-Spielstand und kein Windows-Systemtest sind durch diese Tests belegt. Echte Save-Kompatibilität muss mit dem jeweiligen Spielstand geprüft werden.
 
 Optionaler Browser-Smoke-Test (zusätzlich Node.js benötigt):
 
