@@ -48,7 +48,7 @@ Für die Startelf gelten weiterhin die unten beschriebenen Qualitäts- und Balan
 
 ### Prüfungen und Grenzen
 
-- **Nationalität ist keine Spielberechtigung.** Die Liste enthält alle gelesenen Nationen-IDs. Landnamen können über `nation_names` im JSON ergänzt werden. Unter **Prüfen** bestätigst du die Berechtigung für die gerade gewählte Nation. Explizit nicht spielberechtigte Spieler sind ausgeschlossen; ungeprüfte bleiben im Entwurfsmodus sichtbar und werden im strengen Modus ausgeschlossen.
+- **Nationalität ist keine Spielberechtigung.** Die Liste enthält alle gelesenen Nationen-IDs. Landnamen werden über 433 mitgelieferte FM26-Zuordnungen auf Deutsch angezeigt; eigene `nation_names` im JSON haben Vorrang. Unbekannte IDs bleiben als ungeklärt markiert. Unter **Prüfen** bestätigst du die Berechtigung für die gerade gewählte Nation. Explizit nicht spielberechtigte Spieler sind ausgeschlossen; ungeprüfte bleiben im Entwurfsmodus sichtbar und werden im strengen Modus ausgeschlossen.
 - Registrierungsregeln werden manuell für den betreffenden Wettbewerb eingegeben. Die App behauptet nicht, alle Wettbewerbsregeln oder Nationalteam-Bindungen aus dem Save zu erkennen. Homegrown-Mindestzahlen zählen nur bestätigte Angaben. Ein unbekannter Ausländerstatus zählt bei gesetzter Obergrenze vorsichtig als Ausländer.
 - Die Ablöse `scout_cost` muss bestätigt sein und dieselbe Einheit wie das Budget verwenden. `market_value_raw` aus fmsave ist ausdrücklich keine bestätigte Ablöse und wird nicht als solche behandelt. Kandidaten mit unbekannten Kosten werden separat aufgeführt.
 - Unabhängige Formationen werden nach minimalem schematischem Positionswechsel zugeordnet. Du kannst jede Positionspaarung manuell ändern. Danach prüft die Optimierung echte Positionsvertrautheit; nicht jede Formationskombination ist mit jedem Kader besetzbar.
@@ -66,7 +66,7 @@ Für die Startelf gelten weiterhin die unten beschriebenen Qualitäts- und Balan
 - Jeder taktische Platz besitzt getrennte IP-/OOP-Positionen und Rollen. Standard ist **Automatisch**: Für jeden Spieler und jeden Platz werden die kompatiblen IP- und OOP-Rollen einzeln bewertet und die besten übernommen. Konkret ausgewählte Rollen bleiben pro Phase fixiert. **Alle Rollen automatisch wählen** setzt die manuellen Rollenbindungen zurück. Die Vorschau unter dem Rollenfeld zeigt die tatsächlich ausgewählte Rolle. Jede Tabellenzeile bezeichnet denselben Spieler in beiden Phasen. OOP-Positionen können individuell geändert werden.
 - Spieler auf dem Feld, auf der Bank und unter den Alternativen zeigen ihre **IP- und OOP-Rolle gleichzeitig**. Eine zusätzliche Startelftabelle zeigt beide vollständigen Rollennamen; die Spieleranalyse benennt beide Phasen ausdrücklich. Diese Rollen gehören zum jeweiligen taktischen Einsatz, nicht pauschal zum Spieler.
 - FM26-Rollenkatalog mit 40 IP- und 39 OOP-Rollen und getrennten Listen, u. a. Inside Forward, Free Role, Deep-Lying Playmaker, Wide Outlet Winger und Dropping Defensive Midfielder; keine FM24-Duties. Die Referenzliste ist in den Quellen verlinkt; keine FM24-Duties.
-- Vereinfilter und Auswahl aller eingelesenen primären und weiteren Nationalitäts-IDs. ID-Namen können im JSON mit `nation_names` ergänzt werden. Nationalität ist kein Nachweis der Nationalteam-Spielberechtigung.
+- Vereinfilter und Auswahl aller eingelesenen primären und weiteren Nationalitäts-IDs. Ländernamen werden automatisch auf Deutsch aufgelöst und können im JSON mit `nation_names` überschrieben werden. Nationalität ist kein Nachweis der Nationalteam-Spielberechtigung.
 - Namen einzeln sowie Startelf und Bank gesammelt kopieren.
 - Manuelle Verfügbarkeit: ungeprüft, verfügbar, verletzt, gesperrt, nicht verfügbar. Änderungen werden beim Kaderexport mitgesichert.
 - Erklärung aller Teilwerte, Gewichte, Datenabdeckung, gespeicherten Noten und Potenzialszenarien.
@@ -244,3 +244,5 @@ Der Server bindet ausschließlich `127.0.0.1`, prüft Host/Origin und eine eigen
 - [OOP-Rollenbeobachtungen des Guide-Autors im SI-Forum](https://community.sports-interactive.com/forums/topic/594846-fm26-out-of-possession-player-roles-guide/).
 
 Eigene Bewertungsgewichte und Referenzziele, keine offiziellen FM26-Formeln. Inoffizielles Fanprojekt; keine Verbindung zu Sports Interactive oder SEGA.
+
+Nationenzuordnung: `nations.json`, 433 Nationseinträge einschließlich separater FM26-Einträge, abgeglichen am 25.10.2026 mit https://sortitoutsi.net/football-manager-2026/database. Namen dienen nur der Anzeige; Filter und Spielberechtigungen verwenden unverändert die ursprünglichen IDs. Keine Ableitung einer Nation aus Spielernamen oder Vereinsstandorten.

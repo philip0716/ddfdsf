@@ -63,7 +63,7 @@ def from_save(path):
                         'FM-Verfügbarkeit wird nicht automatisch bestätigt; bitte im Kader prüfen.',
                         'Einzelspielhistorie ist unvollständig; keine Freundschafts-, Jugend- oder Länderspiele.',
                         'CA, PA, Namen und Teile der Einzelspielwerte sind im Parser noch unbestätigte Felder.',
-                        'Nationennamen benötigen eine zusätzliche ID-Zuordnung; alle gelesenen IDs bleiben auswählbar.']
+                        'Nationennamen werden über die mitgelieferte FM26-Zuordnung angezeigt. Unbekannte Nationen bleiben als ungeklärt markiert.']
             notices += [str(w.message) for w in caught][:20]
             data=dict(players=players,date=save.info.game_date.isoformat(),source='FM26 · fmsave 0.5.11',
                       notices=notices,managed_clubs=managed,nation_names={})

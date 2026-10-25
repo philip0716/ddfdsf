@@ -60,11 +60,11 @@ let browser;
    const response=page.waitForResponse(r=>r.url().endsWith('/api/optimize')&&r.request().method()==='POST');
    await page.selectOption('#squad',squad);const r=await (await response).json();assert.equal(r.xi.length,11);assert(r.xi.concat(r.bench).every(c=>c.player.squad===squad));
   }
-  const data=await (await page.request.get(`http://127.0.0.1:${port}/api/data`)).json();for(const p of data.players)p.squad='unknown';
+  const data=await (await page.request.get(`http://127.0.0.1:${port}/api/data`)).json();for(const p of data.players){p.squad='unknown';p.nation_ids=[771,755,987654321];}data.nation_names={};
   const afterImport=page.waitForResponse(r=>r.url().endsWith('/api/optimize'));
   const imported=page.waitForResponse(r=>r.url().endsWith('/api/import-json'));
   await page.locator('#upload').setInputFiles({name:'squads.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});
-  await imported;await afterImport;const cleared=page.waitForResponse(r=>r.url().endsWith('/api/optimize'));await page.selectOption('#squad','');await cleared;
+  await imported;await afterImport;assert.equal(await page.locator('#nation option[value="771"]').textContent(),'Deutschland');assert.equal(await page.locator('#nation option[value="755"]').textContent(),'Österreich');assert.equal(await page.locator('#nation option[value="987654321"]').textContent(),'Unbekannte Nation (ID 987654321)');const cleared=page.waitForResponse(r=>r.url().endsWith('/api/optimize'));await page.selectOption('#squad','');await cleared;
   await page.getByText('Kaderzuordnung prüfen',{exact:true}).click();
   await page.getByLabel('Kader für Team demo-u19',{exact:true}).selectOption('u19');
   const mappedResponse=page.waitForResponse(r=>r.url().endsWith('/api/optimize')&&r.request().method()==='POST');await page.selectOption('#squad','u19');
