@@ -1,13 +1,14 @@
 'use strict';
 const $=id=>document.getElementById(id);
 let catalog,data,slots,result,phase='ip',overrides={},revision=0,timer,loading=false;
-const labels={form:'Aktuelle Form',ip:'IP-Rolleneignung',oop:'OOP-Rolleneignung',position:'Positionsvertrautheit',readiness:'Fitness & Spielpraxis',potential:'PA-Obergrenze',gap:'Entwicklungsspielraum',window:'Entwicklungsfenster',development:'Entwicklungsbedingungen',future_ip:'Zukünftige IP-Eignung',future_oop:'Zukünftige OOP-Eignung',current:'Aktuelle Einsatzbereitschaft'};
+const labels={ability:'Aktuelle Qualität (CA)',form:'Aktuelle Form',ip:'IP-Rolleneignung',oop:'OOP-Rolleneignung',position:'Positionsvertrautheit',readiness:'Fitness & Spielpraxis',potential:'PA-Obergrenze',gap:'Entwicklungsspielraum',window:'Entwicklungsfenster',development:'Entwicklungsbedingungen',future_ip:'Zukünftige IP-Eignung',future_oop:'Zukünftige OOP-Eignung',current:'Aktuelle Einsatzbereitschaft'};
 function node(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
 function message(text){$('message').textContent=text;}
 async function api(path,payload,raw=false){const response=await fetch('/api/'+path,{method:payload===undefined?'GET':'POST',headers:payload===undefined?{}:{'Content-Type':raw?'application/octet-stream':'application/json','X-FM26-Client':'local'},body:payload===undefined?undefined:raw?payload:JSON.stringify(payload)});const body=await response.json();if(!response.ok)throw new Error(body.error||'Anfrage fehlgeschlagen.');return body;}
 function option(select,value,text){const o=node('option',text);o.value=value;select.append(o);}
 const squadLabels={senior:'Senior Squad',second:'2nd Squad',u19:'U19 Squad',unknown:'Nicht zugeordnet'};
 function playerSquad(p){return data.squad_mappings?.[String(p.club_id||'')]?.[String(p.team_id)]||p.squad||'unknown';}
+function fullPlayerName(p){return p.full_name?.trim()||p.name;}
 function nationName(id){return data.nation_names?.[String(id)]||'Unbekannte Nation (ID '+id+')';}
 function selectedPlayers(){if(typeof managerSelectedPlayers==='function')return managerSelectedPlayers();return data.players.filter(p=>(!$('club').value||String(p.club_id)===$('club').value)&&(!$('squad').value||playerSquad(p)===$('squad').value)&&(!$('nation').value||(p.nation_ids||[]).map(String).includes($('nation').value)));}
 function invalidate(){revision++;result=null;renderRolePreviews();document.querySelector('.results').classList.add('pending');$('copy-xi').disabled=true;$('copy-bench').disabled=true;$('score').textContent='—';$('defense').textContent='—';clearTimeout(timer);}
@@ -72,7 +73,7 @@ function renderRoleOverview(){
  table.append(body);root.append(table);
 }
 function renderResult(){
- $('score').textContent=(result.total_score/11).toFixed(1);$('defense').textContent=result.defense_average.toFixed(1);$('lineup-title').textContent=result.objective==='potential'?'Talente mit Zukunft':'Form, die den Unterschied macht';$('copy-xi').disabled=false;$('copy-bench').disabled=false;
+ $('score').textContent=(result.total_score/11).toFixed(1);$('defense').textContent=result.defense_average.toFixed(1);$('lineup-title').textContent=result.objective==='potential'?'Talente mit Zukunft':result.objective==='strength'?'Aktuelle Gesamtstärke':'Form, die den Unterschied macht';$('copy-xi').disabled=false;$('copy-bench').disabled=false;
  renderPitch();renderRoleOverview();renderRolePreviews();if(typeof managerResult==='function')managerResult();$('bench').replaceChildren();result.bench.forEach(c=>{const b=node('button');b.append(node('small',c.slot.ip_position.toUpperCase()+' · '+c.score.toFixed(1)),node('b',c.player.name),node('small',c.player.age+' Jahre · CA '+(c.player.ca??'?')+' / PA '+(c.pa??'?')),rolePair(c));b.onclick=()=>detail(c);$('bench').append(b);});
  renderRoster();
 }
@@ -89,7 +90,7 @@ function detail(c){
  const root=$('detail-content');root.replaceChildren(node('h2',c.player.name),rolePair(c,true));root.append(node('div',c.score.toFixed(1)+' / 100','detail-score'));
  if(c.selection_adjustment)root.append(node('p','Basisscore '+c.base_score.toFixed(1)+' · Gegner-/Belastungsanpassung '+c.selection_adjustment.toFixed(2)+' Punkte','hint'));
  root.append(node('p','Nationalität: '+((c.player.nation_ids||[]).map(nationName).join(' · ')||'Unbekannt'),'hint'));
- const cp=node('button','Name kopieren');cp.onclick=()=>copy(c.player.name);root.append(cp);
+ const cp=node('button','Name kopieren');cp.textContent='Vollständigen Namen kopieren';cp.onclick=()=>copy(fullPlayerName(c.player));root.append(cp);
  if(result.objective==='potential'){
  const figures=node('div',undefined,'figures');for(const [title,value]of [['PA-Obergrenze',c.pa],['CA-Szenario',c.projected_ca],['Entwicklungsscore',c.score.toFixed(1)]]){const div=node('div');div.append(node('small',title),node('b',value??'?'));figures.append(div);}root.append(figures,node('p','Szenarioband: '+(c.projection_interval||[]).join('–')+' CA · '+c.projection_label+'. Attributzuwächse sind eine vereinfachte Annahme.','hint'));
  }
@@ -115,7 +116,7 @@ async function importFile(){
 }
 $('upload').onchange=importFile;$('calculate').onclick=()=>{invalidate();calculate();};
 $('demo').onclick=async()=>{if(loading)return;invalidate();try{data=await api('demo',{});renderData();}catch(e){message(e.message);}};
-function updateObjectiveHint(){const potential=$('objective').value==='potential';$('objective-help').textContent=potential?'PA, Entwicklungsspielraum und zukünftige Rollenpassung stehen im Vordergrund.':'Aktuelle Leistungen zählen am stärksten. Rollen, Positionen und Fitness bleiben Teil der Auswahl.';$('horizon').disabled=!potential;}
+function updateObjectiveHint(){const potential=$('objective').value==='potential';$('objective-help').textContent=$('objective').value==='strength'?'Gesamtstärke: 60 % aktuelle Qualität (CA), 15 % IP-Rolle, 10 % OOP-Rolle, 10 % Position und 5 % Einsatzbereitschaft. Spieler ohne bekannte CA werden ausgeschlossen.':potential?'PA, Entwicklungsspielraum und zukünftige Rollenpassung stehen im Vordergrund.':'Aktuelle Leistungen zählen am stärksten. Rollen, Positionen und Fitness bleiben Teil der Auswahl.';$('horizon').disabled=!potential;}
 $('objective').onchange=()=>{updateObjectiveHint();schedule();};
 for(const id of ['club','nation','squad','bench-size','horizon','min-position','min-defense','min-fitness','confirmed'])$(id).onchange=()=>{if(['club','nation','squad'].includes(id)&&typeof managerContextChanged==='function')managerContextChanged();schedule();};
 $('auto-roles').onclick=()=>{for(const s of slots){s.ip_auto=true;s.oop_auto=true;}renderTactics();schedule();};

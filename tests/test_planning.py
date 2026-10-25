@@ -11,6 +11,29 @@ from selection import pool
 class PlanningTests(unittest.TestCase):
     def setUp(self):
         self.d=demo();self.c=dict(slots=slots_for('4-3-3 DM'),mode='club',club='demo',objective='form')
+    def test_national_strength_rosters_and_xi(self):
+        from engine import evaluate,config_weights
+        for size,gk in [(26,3),(55,5)]:
+            c={**self.c,'mode':'national','nation':'1','objective':'strength','roster_size':size,'goalkeepers':gk}
+            r=roster(self.d,c)
+            self.assertEqual(len(r['players']),size)
+            self.assertEqual(len(set(r['selected_ids'])),size)
+            self.assertEqual(sum(x['slot']['ip_position']=='gk' for x in r['players']),gk)
+            self.assertTrue(all('ability' in x['parts'] and 'form' not in x['parts'] for x in r['players']))
+        result=optimize(self.d,c)
+        self.assertEqual(result['objective'],'strength')
+        p=copy.deepcopy(self.d['players'][0]);p['ca']=None
+        self.assertIsNone(evaluate(p,c['slots'][0],'strength',date.fromisoformat(self.d['date'])))
+
+    def test_strength_ignores_form_and_pa(self):
+        from engine import evaluate
+        p=copy.deepcopy(self.d['players'][0]);s=self.c['slots'][0];today=date.fromisoformat(self.d['date'])
+        before=evaluate(p,s,'strength',today)
+        p['matches']=[];p['season']={};p['pa']=200
+        self.assertEqual(before['score'],evaluate(p,s,'strength',today)['score'])
+        p['ca']-=20
+        self.assertAlmostEqual(before['score']-evaluate(p,s,'strength',today)['score'],6)
+
     def test_club_roster_is_exact_unique_and_position_balanced(self):
         r=roster(self.d,{**self.c,'roster_size':26,'goalkeepers':3})
         self.assertEqual(len(r['players']),26);self.assertEqual(len(set(r['selected_ids'])),26)

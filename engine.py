@@ -9,6 +9,7 @@ from catalog import ROLES, POSITIONS, position_rating, base_position
 from selection import pool as candidate_pool
 from squads import SQUADS, squad_for, validate_mappings
 
+STRENGTH_WEIGHTS = dict(ability=.60,ip=.15,oop=.10,position=.10,readiness=.05)
 FORM_WEIGHTS = dict(form=.45, ip=.20, oop=.15, position=.10, readiness=.10)
 POT_WEIGHTS = dict(potential=.27, gap=.21, window=.14, development=.10,
                    future_ip=.13, future_oop=.09, current=.06)
@@ -41,6 +42,7 @@ def validate(data):
             if p.get(field) is not None and not number(p[field],0,100): raise ValueError('Ungültiger Teilscore: '+field)
         if p.get('professionalism') is not None and not number(p['professionalism'],1,20): raise ValueError('Professionalität muss 1–20 sein.')
         if not isinstance(p.get('name'),str): raise ValueError('Spielername fehlt.')
+        if p.get('full_name') is not None and (not isinstance(p['full_name'],str) or not p['full_name'].strip()): raise ValueError('Vollständiger Name muss ein nicht leerer Text sein.')
         if p.get('pa') is not None and p.get('ca') is not None and number(p['pa'],0,200) and number(p['ca'],0,200) and p['pa']<p['ca']: raise ValueError('PA darf nicht unter CA liegen.')
         for field,upper in [('ca',200),('pa',200),('age',65),('fitness',100),('sharpness',100)]:
             if p.get(field) is not None and not number(p[field],0,upper):
@@ -167,6 +169,9 @@ def evaluate(p,slot,objective,today,horizon=5,weights_override=None):
         parts=dict(potential=pa/2,gap=clip(max(0,pa-ca)/80*100),window=y,development=d,
                    future_ip=fi,future_oop=fo,current=.4*(ca/2)+.4*ready+.2*pos)
         weights=POT_WEIGHTS
+    elif objective=='strength':
+        if ca is None: return None
+        parts=dict(ability=ca/2,ip=ip,oop=oop,position=pos,readiness=ready); weights=STRENGTH_WEIGHTS
     else:
         parts=dict(form=f['value'],ip=ip,oop=oop,position=pos,readiness=ready); weights=FORM_WEIGHTS
     if weights_override is not None: weights=weights_override
@@ -203,7 +208,7 @@ def optimize(data, config):
     validate(data)
     slots=config['slots']; validate_slots(slots)
     objective=config.get('objective','form')
-    if objective not in ['form','potential']: raise ValueError('Unbekanntes Optimierungsziel.')
+    if objective not in ['form','potential','strength']: raise ValueError('Unbekanntes Optimierungsziel.')
     threshold=config.get('min_position',12); defense=config.get('min_defense',40); horizon=config.get('horizon',5)
     if not number(threshold,1,20) or not number(defense,0,100) or not number(horizon,1,10): raise ValueError('Ungültige Optimierungsparameter.')
     min_fitness=config.get('min_fitness',70)
@@ -271,7 +276,7 @@ def optimize(data, config):
 
 
 def config_weights(config,objective):
-    defaults=POT_WEIGHTS if objective=='potential' else FORM_WEIGHTS
+    defaults={'potential':POT_WEIGHTS,'form':FORM_WEIGHTS,'strength':STRENGTH_WEIGHTS}[objective]
     custom_all=config.get('weights',{})
     if not isinstance(custom_all,dict):raise ValueError('Gewichte müssen ein Objekt sein.')
     custom=custom_all.get(objective)

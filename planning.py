@@ -16,7 +16,7 @@ def integer(v,lo,hi,label):
 
 def context(data,config):
     validate(data);validate_slots(config['slots'])
-    if config.get('objective','form') not in ['form','potential']:raise ValueError('Unbekanntes Ziel.')
+    if config.get('objective','form') not in ['form','potential','strength']:raise ValueError('Unbekanntes Ziel.')
     if not number(config.get('horizon',5),1,10):raise ValueError('Ungültiger Entwicklungshorizont.')
     return date.fromisoformat(data['date']),config_weights(config,config.get('objective','form'))
 
