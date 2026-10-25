@@ -63,8 +63,8 @@ def validate(data):
             if v is not None and not number(v,-1000000,1000000): raise ValueError('Ungültiger Saisonwert: '+k)
     try: date.fromisoformat(data['date'])
     except (ValueError,KeyError,TypeError): raise ValueError('Das Spielstanddatum fehlt oder ist ungültig.')
-    from nations import resolve_nation_names
-    data['nation_names']=resolve_nation_names(data.get('nation_names',{}))
+    from nations import apply_nation_names
+    apply_nation_names(data)
     return data
 
 def blend(items, prior=50):

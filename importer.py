@@ -66,5 +66,5 @@ def from_save(path):
                         'Nationennamen werden über die mitgelieferte FM26-Zuordnung angezeigt. Unbekannte Nationen bleiben als ungeklärt markiert.']
             notices += [str(w.message) for w in caught][:20]
             data=dict(players=players,date=save.info.game_date.isoformat(),source='FM26 · fmsave 0.5.11',
-                      notices=notices,managed_clubs=managed,nation_names={})
+                      notices=notices,managed_clubs=managed,nation_names={},nation_id_space='save')
     return validate(data)
