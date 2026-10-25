@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.fm
+*.pyc
+.pytest_cache/
+
+node_modules/
+package-lock.json
+fm26-kader.json
+fm26-profil.json
