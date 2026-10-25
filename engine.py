@@ -5,7 +5,8 @@ from statistics import pstdev
 import numpy as np
 from scipy.optimize import milp, Bounds, LinearConstraint
 from scipy.sparse import lil_matrix
-from catalog import ROLES, POSITIONS
+from catalog import ROLES, POSITIONS, position_rating, base_position
+from selection import pool as candidate_pool
 from squads import SQUADS, squad_for, validate_mappings
 
 FORM_WEIGHTS = dict(form=.45, ip=.20, oop=.15, position=.10, readiness=.10)
@@ -32,6 +33,9 @@ def validate(data):
         ids.add(p['id'])
         if p.get('squad') is not None and p['squad'] not in SQUADS: raise ValueError('Ungültiger Kader.')
         if p.get('team_id') is not None and not isinstance(p['team_id'],(str,int)): raise ValueError('Ungültige Team-ID.')
+        for field in ['eligibility','registration']:
+            if not isinstance(p.get(field,{}),dict):raise ValueError(field+' muss ein Objekt sein.')
+        if p.get('scout_cost') is not None and not number(p['scout_cost'],0,1e12):raise ValueError('Ungültige bestätigte Ablöse.')
         if not isinstance(p.get('nation_ids',[]),list): raise ValueError('nation_ids muss eine Liste sein.')
         for field in ['training_environment','development_trend']:
             if p.get(field) is not None and not number(p[field],0,100): raise ValueError('Ungültiger Teilscore: '+field)
@@ -142,10 +146,10 @@ def resolve_roles(p,slot,gain=0):
         resolved[phase+'_role']=max(candidates,key=rank)
     return resolved
 
-def evaluate(p,slot,objective,today,horizon=5):
-    pos=min(p['positions'].get(slot['ip_position'],0),p['positions'].get(slot['oop_position'],0))*5
+def evaluate(p,slot,objective,today,horizon=5,weights_override=None):
+    pos=min(position_rating(p,slot['ip_position']),position_rating(p,slot['oop_position']))*5
     ready,rc=blend([(7,p.get('fitness')),(3,p.get('sharpness'))])
-    f=form(p,today,slot['ip_position']); d,dc=development(p); y=window(p)
+    f=form(p,today,base_position(slot['ip_position'])); d,dc=development(p); y=window(p)
     pa=p.get('pa'); ca=p.get('ca')
     projection=None; interval=None; gain=0
     if pa is not None and ca is not None and y is not None:
@@ -163,7 +167,9 @@ def evaluate(p,slot,objective,today,horizon=5):
         weights=POT_WEIGHTS
     else:
         parts=dict(form=f['value'],ip=ip,oop=oop,position=pos,readiness=ready); weights=FORM_WEIGHTS
+    if weights_override is not None: weights=weights_override
     missing=[]
+    if p.get('eligibility_status')=='unknown': missing.append('Spielberechtigung für diese Nation ungeprüft')
     if p.get('status','unknown')=='unknown': missing.append('Verfügbarkeit ungeprüft')
     if rc<1: missing.append('Fitness/Spielpraxis teilweise unbekannt')
     if ic<1 or oc<1: missing.append('Rollenattribute unvollständig · neutraler Prior 50 bei vollständigem Fehlen')
@@ -187,7 +193,7 @@ def validate_slots(slots):
                 raise ValueError('Rolle und Position passen nicht zusammen.')
     for phase in ['ip','oop']:
         if sum(s[phase+'_position']=='gk' for s in slots)!=1: raise ValueError('Jede Phase benötigt genau einen Torhüter.')
-    oop=[s['oop_position'] for s in slots]
+    oop=[base_position(s['oop_position']) for s in slots]
     if oop.count('dc')<2 or not any(p in ['dm','mc'] for p in oop):
         raise ValueError('Defensive Balance benötigt mindestens zwei Innenverteidiger und einen zentralen Mittelfeldspieler.')
 
@@ -202,37 +208,26 @@ def optimize(data, config):
     if not number(min_fitness,0,100): raise ValueError('Ungültige Fitnessgrenze.')
     bench_size=config.get('bench_size',9)
     if type(bench_size)!=int or not 1<=bench_size<=15: raise ValueError('Bankgröße muss 1–15 sein.')
-    squad=config.get('squad','')
-    if squad and squad not in SQUADS: raise ValueError('Ungültiger Kaderfilter.')
-    mappings=validate_mappings(config.get('squad_mappings',data.get('squad_mappings',{})))
-    today=date.fromisoformat(data['date']); overrides=config.get('overrides',{})
-    players=[]; excluded=[]
-    for raw in sorted(data['players'],key=lambda p:p['id']):
-        p=dict(raw); p['status']=overrides.get(p['id'],p.get('status','unknown'))
-        if p['status'] not in ['available','unknown','injured','suspended','unavailable']: raise ValueError('Ungültiger Status.')
-        if config.get('club') and str(p.get('club_id'))!=str(config['club']): continue
-        p['squad']=squad_for(p,mappings)
-        if squad and p['squad']!=squad: continue
-        if config.get('nation') and str(config['nation']) not in [str(n) for n in p.get('nation_ids',[])]: continue
-        reason=None
-        if p['status'] in ['injured','suspended','unavailable']: reason=p['status']
-        elif p.get('fitness') is not None and p['fitness']<min_fitness: reason='Unter Fitnessgrenze'
-        elif config.get('only_confirmed') and p['status']!='available': reason='Verfügbarkeit ungeprüft'
-        elif objective=='potential' and any(p.get(k) is None for k in ['pa','ca','age']): reason='PA/CA/Alter unbekannt'
-        if reason: excluded.append(dict(id=p['id'],name=p['name'],reason=reason))
-        else: players.append(p)
+    today=date.fromisoformat(data['date'])
+    players,excluded=candidate_pool(data,config)
+    weights=config_weights(config,objective)
+    locks=config.get('locks',{})
+    if not isinstance(locks,dict):raise ValueError('Spielerfixierungen müssen ein Objekt sein.')
+    if any(str(k) not in [str(i) for i in range(11)] for k in locks):raise ValueError('Ungültiger fixierter Platz.')
     if len(players)>5000: raise ValueError('Mehr als 5.000 Kandidaten. Bitte Verein oder Nationalität eingrenzen.')
     if len(players)<11: raise ValueError(f'Nur {len(players)} geeignete Spieler im Filter. Mindestens elf erforderlich.')
     edges=[]; results={}
     for i,p in enumerate(players):
         for j,s in enumerate(slots):
-            if min(p['positions'].get(s['ip_position'],0),p['positions'].get(s['oop_position'],0))<threshold: continue
-            r=evaluate(p,s,objective,today,horizon)
+            if min(position_rating(p,s['ip_position']),position_rating(p,s['oop_position']))<threshold: continue
+            if str(j) in locks and str(locks[str(j)])!=p['id']:continue
+            r=evaluate(p,s,objective,today,horizon,weights)
+            if r:r=adjust_score(r,p,config)
             if r: edges.append((i,j)); results[i,j]=r
     if not edges: raise ValueError('Keine Spieler erfüllen die Positionsanforderungen.')
     n=len(edges); a=lil_matrix((11+len(players)+1,n)); low=np.full(a.shape[0],-np.inf); high=np.full(a.shape[0],np.inf)
     low[:11]=1; high[:11]=1; high[11:11+len(players)]=1
-    backs=[j for j,s in enumerate(slots) if s['oop_position'] in ['dc','dl','dr','wbl','wbr','dm']]
+    backs=[j for j,s in enumerate(slots) if base_position(s['oop_position']) in ['dc','dl','dr','wbl','wbr','dm']]
     low[-1]=defense*len(backs)
     for k,(i,j) in enumerate(edges):
         a[j,k]=1; a[11+i,k]=1
@@ -257,7 +252,7 @@ def optimize(data, config):
     bank=[]; used=set(); coverage=[]
     groups=[('Tor',{'gk'}),('Abwehr',{'dc','dl','dr','wbl','wbr'}),('Mittelfeld',{'dm','mc','ml','mr','amc'}),('Angriff',{'aml','amr','stc'})]
     for label,positions in groups:
-        pool=[e for e in candidates if e[0] not in used and slots[e[1]]['ip_position'] in positions]
+        pool=[e for e in candidates if e[0] not in used and base_position(slots[e[1]]['ip_position']) in positions]
         if pool and len(bank)<bench_size:
             e=max(pool,key=lambda e:results[e]['score']); bank.append(card(*e)); used.add(e[0])
         else: coverage.append('Bank ohne zusätzliche Abdeckung: '+label)
@@ -271,3 +266,32 @@ def optimize(data, config):
                 objective=objective,total_score=round(sum(r['score'] for r in xi),2),
                 defense_average=round(sum(results[e]['defense'] for e in chosen if e[1] in backs)/len(backs),2),
                 solver='Globales ganzzahliges Optimum; Ersatzbank nach Abdeckung und Score')
+
+
+def config_weights(config,objective):
+    defaults=POT_WEIGHTS if objective=='potential' else FORM_WEIGHTS
+    custom_all=config.get('weights',{})
+    if not isinstance(custom_all,dict):raise ValueError('Gewichte müssen ein Objekt sein.')
+    custom=custom_all.get(objective)
+    if custom is None:return defaults
+    if not isinstance(custom,dict) or set(custom)!=set(defaults) or any(not number(v,0,100) for v in custom.values()) or sum(custom.values())<=0:
+        raise ValueError('Gewichte müssen vollständig, nicht negativ und zusammen größer als null sein.')
+    total=sum(custom.values());return {k:v/total for k,v in custom.items()}
+
+def adjust_score(result,p,config):
+    profiles={'high_press':['first_touch','passing','composure','decisions'],
+              'aerial':['heading','jumping_reach','strength'],
+              'low_block':['vision','passing','technique','off_the_ball'],
+              'pace':['anticipation','positioning','pace','acceleration']}
+    profile=config.get('opponent_profile','balanced')
+    if profile not in ['balanced',*profiles]:raise ValueError('Unbekanntes Gegnerprofil.')
+    bonus=0
+    if profile!='balanced':
+        values=[p['attributes'][a] for a in profiles[profile] if a in p['attributes']]
+        if values:bonus=(sum(values)/len(values)-10.5)/1.9
+    penalty=config.get('selection_penalties',{}).get(p['id'],0)
+    if not number(penalty,0,30):raise ValueError('Ungültige Belastungsstrafe.')
+    result=dict(result);result['base_score']=result['score'];result['selection_adjustment']=round(bonus-penalty,3)
+    result['opponent_profile']=profile;result['rotation_penalty']=penalty
+    result['score']=round(clip(result['score']+bonus-penalty),4)
+    return result

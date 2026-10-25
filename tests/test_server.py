@@ -21,7 +21,7 @@ class ApiTests(unittest.TestCase):
         with urlopen(r) as response:return response.status,response.read()
     def test_demo_and_optimization_round_trip(self):
         status,raw=self.request('/api/demo',{})
-        data=json.loads(raw);self.assertEqual(len(data['players']),84)
+        data=json.loads(raw);self.assertEqual(len(data['players']),112)
         _,raw=self.request('/api/optimize',dict(slots=slots_for('4-3-3 DM'),objective='potential'))
         self.assertEqual(len(json.loads(raw)['xi']),11)
     def test_invalid_json_import_preserves_previous_data(self):
@@ -43,4 +43,15 @@ class ApiTests(unittest.TestCase):
     def test_invalid_save_is_rejected_and_not_saved(self):
         with self.assertRaises(HTTPError) as e:self.request('/api/import-save',{'not':'a save'})
         self.assertEqual(e.exception.code,422)
+    def test_planning_roster_endpoint(self):
+        _,raw=self.request('/api/planning',dict(action='roster',config=dict(slots=slots_for('4-3-3 DM'),club='demo',mode='club',roster_size=26)))
+        self.assertEqual(len(json.loads(raw)['players']),26)
+    def test_national_planning_requires_nation(self):
+        with self.assertRaises(HTTPError) as e:self.request('/api/planning',dict(action='roster',config=dict(slots=slots_for('4-3-3 DM'),mode='national')))
+        self.assertEqual(e.exception.code,400)
+    def test_phase_pairing_endpoint(self):
+        _,raw=self.request('/api/planning',dict(action='pair_formations',formation='4-2-3-1',config=dict(slots=slots_for('4-3-3 DM'))))
+        self.assertEqual(len(json.loads(raw)['slots']),11)
+    def test_manager_asset_is_served(self):
+        code,body=self.request('/manager.js');self.assertEqual(code,200);self.assertIn(b'managerReady',body)
 if __name__=='__main__':unittest.main()

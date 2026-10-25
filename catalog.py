@@ -1,5 +1,5 @@
-"""Small FM26 role catalogue. Attribute weights are our model, not FM internals."""
-POSITIONS = ['gk','dl','dc','dr','wbl','wbr','dm','ml','mc','mr','aml','amc','amr','stc']
+"""FM26 role catalogue (40 IP and 39 OOP entries from the documented reference). Attribute weights are our model, not FM internals."""
+POSITIONS = ['gk','dl','dcl','dc','dcr','dr','wbl','wbr','dm','ml','mc','mr','aml','amc','amr','stc']
 ROLES = {}
 def role(phase, name, positions, **weights):
     ROLES[phase + ':' + name] = dict(phase=phase, name=name, positions=positions.split(), weights=weights)
@@ -7,7 +7,7 @@ def role(phase, name, positions, **weights):
 role('ip','Ball-Playing Goalkeeper','gk',passing=3,kicking=3,first_touch=2,decisions=2,composure=2,reflexes=3,handling=3)
 role('ip','No-Nonsense Goalkeeper','gk',reflexes=3,handling=3,aerial_reach=2,positioning=2,kicking=1)
 role('ip','Centre-Back','dc',marking=3,tackling=3,positioning=3,heading=2,jumping_reach=2,passing=1)
-role('ip','Overlapping Centre-Back','dc',passing=2,dribbling=2,crossing=2,pace=2,stamina=2,tackling=2,marking=2)
+role('ip','Overlapping Centre-Back','dcl dcr',passing=2,dribbling=2,crossing=2,pace=2,stamina=2,tackling=2,marking=2)
 role('ip','Full-Back','dl dr',crossing=2,passing=2,stamina=2,pace=2,tackling=2,positioning=2)
 role('ip','Playmaking Wing-Back','dl dr wbl wbr',passing=3,vision=3,decisions=2,technique=2,stamina=2)
 role('ip','Advanced Wing-Back','wbl wbr',crossing=3,dribbling=2,off_the_ball=3,pace=2,stamina=3)
@@ -57,6 +57,48 @@ role('oop','Dropping Defensive Midfielder','dm',positioning=3,marking=3,anticipa
 role('oop','Wide Covering Central Midfielder','mc',marking=3,tackling=3,work_rate=3,agility=2,stamina=2,decisions=2)
 role('oop','Splitting Outlet Centre Forward','stc',anticipation=3,off_the_ball=3,decisions=3,pace=3,concentration=2)
 
+# Remaining names from the FM26 role reference (no legacy Duties).
+role('ip','Goalkeeper','gk',reflexes=3,handling=3,positioning=3,communication=2,agility=2)
+role('ip','No-Nonsense Centre-Back','dc',marking=3,tackling=3,heading=3,positioning=3,strength=2)
+role('ip','Advanced Centre-Back','dc',passing=3,technique=2,decisions=3,positioning=3,teamwork=2)
+role('ip','Wide Centre-Back','dcl dcr',marking=3,tackling=3,heading=2,positioning=3,pace=2,stamina=2)
+role('ip','Wing-Back','dl dr wbl wbr',crossing=3,stamina=3,work_rate=3,pace=2,tackling=2)
+role('ip','Central Midfielder','mc',passing=3,first_touch=2,tackling=3,decisions=3,teamwork=3)
+role('ip','Wide Midfielder','ml mr',crossing=3,passing=3,decisions=2,teamwork=3,stamina=2)
+role('ip','Playmaking Winger','ml mr aml amr',passing=3,vision=3,first_touch=3,dribbling=2,decisions=2)
+role('ip','Channel Midfielder','mc amc',passing=3,off_the_ball=3,work_rate=3,crossing=2,acceleration=2)
+role('ip','Second Striker','amc',finishing=3,off_the_ball=3,anticipation=3,composure=2,acceleration=2)
+role('ip','Box-to-Box Midfielder','dm',passing=2,tackling=3,off_the_ball=3,work_rate=3,stamina=3)
+role('ip','Box-to-Box Playmaker','dm',passing=3,vision=3,decisions=2,off_the_ball=3,stamina=3)
+role('ip','Half Back','dm',heading=3,marking=3,tackling=3,positioning=3,strength=2)
+role('ip','Target Forward','stc',heading=3,jumping_reach=3,strength=3,finishing=2,balance=2)
+role('oop','Goalkeeper','gk',reflexes=3,handling=3,positioning=3,communication=2,agility=2)
+role('oop','Centre-Back','dc',marking=3,tackling=3,heading=3,positioning=3,strength=2)
+role('oop','Wide Centre-Back','dcl dcr',marking=3,tackling=3,positioning=3,pace=2,agility=2)
+role('oop','Covering Wide Centre-Back','dcl dcr',marking=3,anticipation=3,positioning=3,pace=3,decisions=2)
+role('oop','Stopping Wide Centre-Back','dcl dcr',tackling=3,aggression=3,heading=2,positioning=3,strength=2)
+role('oop','Full-Back','dl dr',marking=3,tackling=3,positioning=3,anticipation=2,acceleration=2)
+role('oop','Wing-Back','wbl wbr',marking=3,tackling=3,positioning=3,stamina=3,acceleration=2)
+role('oop','Defensive Midfielder','dm',tackling=3,anticipation=3,positioning=3,teamwork=2,work_rate=2)
+role('oop','Central Midfielder','mc',tackling=3,decisions=3,teamwork=3,work_rate=3)
+role('oop','Wide Midfielder','ml mr',decisions=3,teamwork=3,work_rate=3,acceleration=2)
+role('oop','Wide Outlet Wide Midfielder','ml mr',anticipation=3,off_the_ball=3,decisions=3,pace=3)
+role('oop','Winger','aml amr',anticipation=3,decisions=3,teamwork=3,work_rate=3,acceleration=2)
+role('oop','Attacking Midfielder','amc',anticipation=3,decisions=3,work_rate=3,teamwork=2)
+role('oop','Central Outlet Attacking Midfielder','amc',anticipation=3,off_the_ball=3,decisions=3,balance=3)
+role('oop','Splitting Outlet Attacking Midfielder','amc',anticipation=3,off_the_ball=3,decisions=3,pace=3)
+role('oop','Centre Forward','stc',anticipation=3,decisions=3,work_rate=3,teamwork=2)
+
+POS_BASE={'dcl':'dc','dcr':'dc'}
+def base_position(pos):return POS_BASE.get(pos,pos)
+def position_rating(player,pos):
+    return player['positions'].get(pos,player['positions'].get(base_position(pos),0))
+# Normal centre-back roles are available in either side of a pair. Wide roles
+# remain restricted to the explicit DCL/DCR positions.
+for item in ROLES.values():
+    if 'dc' in item['positions']:
+        item['positions'] += ['dcl','dcr']
+
 FORMATIONS = {
  '4-3-3 DM': ['gk','dl','dc','dc','dr','dm','mc','mc','aml','amr','stc'],
  '4-2-3-1': ['gk','dl','dc','dc','dr','dm','dm','aml','amc','amr','stc'],
@@ -67,6 +109,9 @@ FORMATIONS = {
 def default_role(phase, position):
     return next(k for k,v in ROLES.items() if v['phase']==phase and position in v['positions'])
 def slots_for(formation):
+    positions=list(FORMATIONS[formation]);centres=[i for i,p in enumerate(positions) if p=='dc']
+    if len(centres)>=2:
+        positions[centres[0]]='dcl';positions[centres[-1]]='dcr'
     return [dict(id=str(i),ip_position=p,oop_position=p,ip_auto=True,oop_auto=True,
                  ip_role=default_role('ip',p),oop_role=default_role('oop',p))
-            for i,p in enumerate(FORMATIONS[formation])]
+            for i,p in enumerate(positions)]

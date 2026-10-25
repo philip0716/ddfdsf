@@ -8,15 +8,16 @@ async function api(path,payload,raw=false){const response=await fetch('/api/'+pa
 function option(select,value,text){const o=node('option',text);o.value=value;select.append(o);}
 const squadLabels={senior:'Senior Squad',second:'2nd Squad',u19:'U19 Squad',unknown:'Nicht zugeordnet'};
 function playerSquad(p){return data.squad_mappings?.[String(p.club_id||'')]?.[String(p.team_id)]||p.squad||'unknown';}
-function selectedPlayers(){return data.players.filter(p=>(!$('club').value||String(p.club_id)===$('club').value)&&(!$('squad').value||playerSquad(p)===$('squad').value)&&(!$('nation').value||(p.nation_ids||[]).map(String).includes($('nation').value)));}
+function selectedPlayers(){if(typeof managerSelectedPlayers==='function')return managerSelectedPlayers();return data.players.filter(p=>(!$('club').value||String(p.club_id)===$('club').value)&&(!$('squad').value||playerSquad(p)===$('squad').value)&&(!$('nation').value||(p.nation_ids||[]).map(String).includes($('nation').value)));}
 function invalidate(){revision++;result=null;renderRolePreviews();document.querySelector('.results').classList.add('pending');$('copy-xi').disabled=true;$('copy-bench').disabled=true;$('score').textContent='—';$('defense').textContent='—';clearTimeout(timer);}
-function schedule(){invalidate();renderRoster();timer=setTimeout(calculate,250);}
+function schedule(){invalidate();renderRoster();if(typeof managerAutosave==='function')managerAutosave();timer=setTimeout(calculate,250);}
 function renderData(){
  overrides={};result=null;data.squad_mappings=data.squad_mappings||{};$('squad').value='';
  $('source').textContent=data.source||'JSON-Import';$('count').textContent=data.players.length;$('date').textContent='Stand: '+data.date;
  const clubs=new Map(data.players.map(p=>[String(p.club_id||''),p.club||'Ohne Verein']));$('club').replaceChildren();option($('club'),'','Alle Vereine');for(const [id,name]of [...clubs].sort((a,b)=>a[1].localeCompare(b[1])))if(id)option($('club'),id,name);
  const defaultClub=(data.managed_clubs||[]).find(c=>clubs.has(String(c)));if(defaultClub)$('club').value=defaultClub;
  $('nation').replaceChildren();option($('nation'),'','Alle Nationalitäten');const nations=[...new Set(data.players.flatMap(p=>p.nation_ids||[]).map(String))].sort((a,b)=>((data.nation_names||{})[a]||a).localeCompare((data.nation_names||{})[b]||b));for(const id of nations)option($('nation'),id,(data.nation_names||{})[id]||'Nation-ID '+id);
+ if(typeof managerReady==='function')managerReady();
  $('notices').replaceChildren(...(data.notices||[]).map(t=>node('p',t)));renderRoster();schedule();
 }
 function renderSquadMapping(){
@@ -39,13 +40,13 @@ function renderTactics(){
  select.value=s[ph+'_auto']?'auto':s[ph+'_role'];}
  const preview=node('small','Noch nicht berechnet','role-preview');preview.dataset.slot=i;preview.dataset.phase=ph;
  fill();pos.onchange=()=>{s[ph+'_position']=pos.value;fill();schedule();};select.onchange=()=>{s[ph+'_auto']=select.value==='auto';if(!s[ph+'_auto'])s[ph+'_role']=select.value;schedule();};rt.append(select,preview);tr.append(rt);
- }$('tactics').append(tr);});
+ }if(typeof managerLockSelect==='function'&&data){const td=node('td');td.append(managerLockSelect(i));tr.append(td);}$('tactics').append(tr);});
 }
 function renderRolePreviews(){
  for(const preview of document.querySelectorAll('.role-preview')){const c=result?.xi.find(c=>c.slot_index===Number(preview.dataset.slot));const ph=preview.dataset.phase;
  preview.textContent=c?(c.role_selection?.[ph]==='automatic'?'Automatisch: ':'Fixiert: ')+catalog.roles[c.slot[ph+'_role']].name:'Wird neu berechnet …';}
 }
-function config(){return {slots,objective:$('objective').value,club:$('club').value,nation:$('nation').value,squad:$('squad').value,squad_mappings:data.squad_mappings,bench_size:Number($('bench-size').value),min_position:Number($('min-position').value),min_defense:Number($('min-defense').value),min_fitness:Number($('min-fitness').value),horizon:Number($('horizon').value),only_confirmed:$('confirmed').checked,overrides};}
+function config(){return Object.assign({slots,objective:$('objective').value,club:$('club').value,nation:$('nation').value,squad:$('squad').value,squad_mappings:data.squad_mappings,bench_size:Number($('bench-size').value),min_position:Number($('min-position').value),min_defense:Number($('min-defense').value),min_fitness:Number($('min-fitness').value),horizon:Number($('horizon').value),only_confirmed:$('confirmed').checked,overrides},typeof managerConfigExtras==='function'?managerConfigExtras():{});}
 async function calculate(){
  if(loading)return;
  const own=++revision;const button=$('calculate');button.disabled=true;button.textContent='Elf wird berechnet …';message('');
@@ -71,11 +72,11 @@ function renderRoleOverview(){
 }
 function renderResult(){
  $('score').textContent=(result.total_score/11).toFixed(1);$('defense').textContent=result.defense_average.toFixed(1);$('lineup-title').textContent=result.objective==='potential'?'Talente mit Zukunft':'Form, die den Unterschied macht';$('copy-xi').disabled=false;$('copy-bench').disabled=false;
- renderPitch();renderRoleOverview();renderRolePreviews();$('bench').replaceChildren();result.bench.forEach(c=>{const b=node('button');b.append(node('small',c.slot.ip_position.toUpperCase()+' · '+c.score.toFixed(1)),node('b',c.player.name),node('small',c.player.age+' Jahre · CA '+(c.player.ca??'?')+' / PA '+(c.pa??'?')),rolePair(c));b.onclick=()=>detail(c);$('bench').append(b);});
+ renderPitch();renderRoleOverview();renderRolePreviews();if(typeof managerResult==='function')managerResult();$('bench').replaceChildren();result.bench.forEach(c=>{const b=node('button');b.append(node('small',c.slot.ip_position.toUpperCase()+' · '+c.score.toFixed(1)),node('b',c.player.name),node('small',c.player.age+' Jahre · CA '+(c.player.ca??'?')+' / PA '+(c.pa??'?')),rolePair(c));b.onclick=()=>detail(c);$('bench').append(b);});
  renderRoster();
 }
-function line(pos){if(pos==='gk')return 0;if(['dl','dc','dr'].includes(pos))return 1;if(['wbl','dm','wbr'].includes(pos))return 2;if(['ml','mc','mr'].includes(pos))return 3;if(['aml','amc','amr'].includes(pos))return 4;return 5;}
-function side(pos){return ['dl','wbl','ml','aml'].includes(pos)?0:['dr','wbr','mr','amr'].includes(pos)?2:1;}
+function line(pos){if(pos==='gk')return 0;if(['dl','dc','dcl','dcr','dr'].includes(pos))return 1;if(['wbl','dm','wbr'].includes(pos))return 2;if(['ml','mc','mr'].includes(pos))return 3;if(['aml','amc','amr'].includes(pos))return 4;return 5;}
+function side(pos){return ['dcl','dl','wbl','ml','aml'].includes(pos)?0:['dcr','dr','wbr','mr','amr'].includes(pos)?2:1;}
 function renderPitch(){
  const pitch=$('pitch');pitch.replaceChildren(node('div',undefined,'pitch-line'),node('div',undefined,'pitch-circle'));if(!result)return;
  const lines=new Map();for(const c of result.xi){const p=c.slot[phase+'_position'],l=line(p);if(!lines.has(l))lines.set(l,[]);lines.get(l).push(c);}
@@ -85,6 +86,7 @@ function renderPitch(){
 async function copy(text){try{await navigator.clipboard.writeText(text);message('Namen kopiert.');}catch{message('Kopieren im Browser nicht möglich. Namen im folgenden Fenster markieren.');const d=$('detail-content');d.replaceChildren(node('h2','Namen kopieren'));const textarea=node('textarea');textarea.value=text;textarea.rows=13;textarea.style.width='100%';d.append(textarea);if(!$('detail').open)$('detail').showModal();textarea.select();}}
 function detail(c){
  const root=$('detail-content');root.replaceChildren(node('h2',c.player.name),rolePair(c,true));root.append(node('div',c.score.toFixed(1)+' / 100','detail-score'));
+ if(c.selection_adjustment)root.append(node('p','Basisscore '+c.base_score.toFixed(1)+' · Gegner-/Belastungsanpassung '+c.selection_adjustment.toFixed(2)+' Punkte','hint'));
  const cp=node('button','Name kopieren');cp.onclick=()=>copy(c.player.name);root.append(cp);
  if(result.objective==='potential'){
  const figures=node('div',undefined,'figures');for(const [title,value]of [['PA-Obergrenze',c.pa],['CA-Szenario',c.projected_ca],['Entwicklungsscore',c.score.toFixed(1)]]){const div=node('div');div.append(node('small',title),node('b',value??'?'));figures.append(div);}root.append(figures,node('p','Szenarioband: '+(c.projection_interval||[]).join('–')+' CA · '+c.projection_label+'. Attributzuwächse sind eine vereinfachte Annahme.','hint'));
@@ -100,7 +102,7 @@ function detail(c){
 function renderRoster(){
  if(!data)return;renderSquadMapping();const filtered=selectedPlayers();$('count').textContent=filtered.length;$('squad-info').textContent=filtered.length+' Spieler im Filter · '+data.players.filter(p=>(!$('club').value||String(p.club_id)===$('club').value)&&playerSquad(p)==='unknown').length+' im Verein noch nicht zugeordnet.';const text=$('search').value.toLowerCase(),eligible=selectedPlayers().filter(p=>p.name.toLowerCase().includes(text));const rows=eligible.slice(0,200);$('roster').replaceChildren();const selected=new Set(result?result.xi.map(c=>c.player.id):[]);
  rows.forEach(p=>{const tr=node('tr');const name=node('td');name.append(node('b',p.name),node('small',(selected.has(p.id)?'Startelf · ':'')+(p.club||'Ohne Verein')+' · '+squadLabels[playerSquad(p)]));tr.append(name,node('td',Object.entries(p.positions).filter(([k,v])=>v>=12).map(([k])=>k.toUpperCase()).join(' / ')),node('td',p.age??'?'),node('td',(p.ca??'?')+' / '+(p.pa??'?')),node('td',p.fitness==null?'Unbekannt':p.fitness.toFixed(0)+' %'));
- const td=node('td'),s=node('select');s.setAttribute('aria-label','Verfügbarkeit '+p.name);for(const [v,t]of [['unknown','Ungeprüft'],['available','Verfügbar'],['injured','Verletzt'],['suspended','Gesperrt'],['unavailable','Nicht verfügbar']])option(s,v,t);s.value=overrides[p.id]||p.status||'unknown';s.onchange=()=>{overrides[p.id]=s.value;schedule();};td.append(s);tr.append(td);const cp=node('td'),button=node('button','Kopieren');button.onclick=()=>copy(p.name);cp.append(button);tr.append(cp);$('roster').append(tr);});
+ const td=node('td'),s=node('select');s.setAttribute('aria-label','Verfügbarkeit '+p.name);for(const [v,t]of [['unknown','Ungeprüft'],['available','Verfügbar'],['injured','Verletzt'],['suspended','Gesperrt'],['unavailable','Nicht verfügbar']])option(s,v,t);s.value=overrides[p.id]||p.status||'unknown';s.onchange=()=>{overrides[p.id]=s.value;schedule();};td.append(s);tr.append(td);const review=node('td'),reviewButton=node('button','Prüfen');reviewButton.onclick=()=>managerCheckPlayer(p);review.append(reviewButton);tr.append(review);const cp=node('td'),button=node('button','Kopieren');button.onclick=()=>copy(p.name);cp.append(button);tr.append(cp);$('roster').append(tr);});
  $('roster-count').textContent=rows.length+' von '+eligible.length+' Spielern im aktuellen Filter angezeigt'+(eligible.length>200?' · Suche eingrenzen. Die Optimierung nutzt den gesamten Filter.':'.');
 }
 async function importFile(){
@@ -111,11 +113,12 @@ async function importFile(){
 }
 $('upload').onchange=importFile;$('calculate').onclick=()=>{invalidate();calculate();};
 $('demo').onclick=async()=>{if(loading)return;invalidate();try{data=await api('demo',{});renderData();}catch(e){message(e.message);}};
-$('objective').onchange=()=>{const potential=$('objective').value==='potential';$('objective-help').textContent=potential?'PA, Entwicklungsspielraum und zukünftige Rollenpassung stehen im Vordergrund.':'Aktuelle Leistungen zählen am stärksten. Rollen, Positionen und Fitness bleiben Teil der Auswahl.';$('horizon').disabled=!potential;schedule();};
-for(const id of ['club','nation','squad','bench-size','horizon','min-position','min-defense','min-fitness','confirmed'])$(id).onchange=schedule;
+function updateObjectiveHint(){const potential=$('objective').value==='potential';$('objective-help').textContent=potential?'PA, Entwicklungsspielraum und zukünftige Rollenpassung stehen im Vordergrund.':'Aktuelle Leistungen zählen am stärksten. Rollen, Positionen und Fitness bleiben Teil der Auswahl.';$('horizon').disabled=!potential;}
+$('objective').onchange=()=>{updateObjectiveHint();schedule();};
+for(const id of ['club','nation','squad','bench-size','horizon','min-position','min-defense','min-fitness','confirmed'])$(id).onchange=()=>{if(['club','nation','squad'].includes(id)&&typeof managerContextChanged==='function')managerContextChanged();schedule();};
 $('auto-roles').onclick=()=>{for(const s of slots){s.ip_auto=true;s.oop_auto=true;}renderTactics();schedule();};
-$('formation').onchange=()=>{slots=structuredClone(catalog.formations[$('formation').value]);renderTactics();schedule();};
+$('formation').onchange=()=>{if(typeof managerContextChanged==='function')managerContextChanged();slots=structuredClone(catalog.formations[$('formation').value]);if($('oop-formation'))$('oop-formation').value=$('formation').value;renderTactics();schedule();};
 $('phase-ip').onclick=()=>{phase='ip';$('phase-ip').classList.add('active');$('phase-oop').classList.remove('active');renderPitch();};$('phase-oop').onclick=()=>{phase='oop';$('phase-oop').classList.add('active');$('phase-ip').classList.remove('active');renderPitch();};
 $('copy-xi').onclick=()=>result&&copy(result.xi.map(c=>c.player.name).join('\n'));$('copy-bench').onclick=()=>result&&copy(result.bench.map(c=>c.player.name).join('\n'));$('search').oninput=renderRoster;$('close-detail').onclick=()=>$('detail').close();
-$('export-data').onclick=()=>{const exported={...data,players:data.players.map(p=>({...p,status:overrides[p.id]||p.status||'unknown'}))};const url=URL.createObjectURL(new Blob([JSON.stringify(exported,null,2)],{type:'application/json'}));const a=node('a');a.href=url;a.download='fm26-kader.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
-(async()=>{try{catalog=await api('catalog');for(const name of Object.keys(catalog.formations))option($('formation'),name,name);slots=structuredClone(catalog.formations[$('formation').value]);renderTactics();data=await api('data');renderData();$('objective-help').textContent='Aktuelle Leistungen zählen am stärksten. Rollen, Positionen und Fitness bleiben Teil der Auswahl.';$('horizon').disabled=true;}catch(e){message(e.message);}})();
+$('export-data').onclick=()=>{const exported={...data,saved_config:config(),players:data.players.map(p=>typeof managerExportPlayer==='function'?managerExportPlayer(p):({...p,status:overrides[p.id]||p.status||'unknown'}))};const url=URL.createObjectURL(new Blob([JSON.stringify(exported,null,2)],{type:'application/json'}));const a=node('a');a.href=url;a.download='fm26-kader.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+(async()=>{try{catalog=await api('catalog');for(const name of Object.keys(catalog.formations))option($('formation'),name,name);slots=structuredClone(catalog.formations[$('formation').value]);renderTactics();data=await api('data');renderData();updateObjectiveHint();}catch(e){message(e.message);}})();

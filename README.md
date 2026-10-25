@@ -1,4 +1,4 @@
-# ⚽ FM26 Best XI Builder
+# ⚽ FM26 Vereins- & Nationalteam-Manager · v1.0
 
 Lokale Browser-Anwendung für Football Manager 26 mit zwei getrennten Optimierungszielen: **Formstärkste Startelf** und **Höchstes Entwicklungspotenzial**. Python liest den Spielstand, SciPy/HiGHS besetzt alle elf taktischen Plätze gemeinsam. Die Oberfläche läuft unter `http://127.0.0.1:8765`.
 
@@ -23,7 +23,41 @@ python server.py
 
 Auf macOS/Linux alternativ `sh start.sh`. Bei einem Update Abhängigkeiten erneut mit `python -m pip install -r requirements.txt` innerhalb der aktivierten Umgebung installieren. Anderer Port: `python server.py --port 8766`. Ohne automatisches Browserfenster: `--no-browser`.
 
-## Funktionen
+## Die zehn Manager-Funktionen
+
+Alle Werkzeuge verwenden den Planungsmodus **Verein** oder **Nationalmannschaft** oben links. Im Nationalmodus werden Vereins- und Senior/2nd/U19-Filter ignoriert; gesucht wird über alle Vereine im Save.
+
+| Nr. | Funktion | Umsetzung |
+|---|---|---|
+| 1 | Gesamten Kader nominieren | Vereins-Saisonkader und Nationalteam mit 23/25/26/30/55 Spielern, eigener Torwartzahl, Rollen und mehrfacher Positionsabdeckung. Nach der ersten Nominierung auf Wunsch automatische Neuberechnung bei geänderten Einstellungen. |
+| 2 | FM26-Taktikeditor | Unabhängige IP-/OOP-Formationen, Positionsübergänge, 40 IP- und 39 OOP-Rollen nach der dokumentierten Rollenreferenz, automatische oder fixierte Rollen und Spielerfixierungen. Vorschlag der besten angebotenen Grundformation. |
+| 3 | Weitere Kandidaten | Vereinsmodus: Spieler anderer Vereine nach Einsatzscore, Altersgrenze und bestätigtem Transferbudget. Nationalmodus: weitere noch nicht nominierte Kandidaten derselben Nation. |
+| 4 | Spielberechtigung und Registrierung | Manuelle verifizierte Prüfungen pro Spieler; strenger Modus für bestätigte Angaben. Vereinsregeln für Mindestzahlen im Verein/im Land ausgebildeter Spieler und maximale Ausländerzahl. |
+| 5 | Positionsübersicht | Erste, zweite und dritte Wahl je taktischem Platz, verfügbare Kandidatenzahl, Lücken und einfache Besetzung. Mehrfachpositionen werden sichtbar eingeordnet; die Kadernominierung prüft gemeinsame Besetzbarkeit. |
+| 6 | Spielervergleich | Zwei bis fünf Spieler, Attribute, CA/PA, Formscore, Potenzialscore und beide Rollen. „Warum dieser Spieler?“ vergleicht das freie Gesamtoptimum mit einem erzwungenen Kandidaten. |
+| 7 | Rotation | Bis zu acht chronologische Spiele mit Dauer, Gegnerprofil und nachvollziehbarem Fitness-/Belastungsmodell. |
+| 8 | Gegnerabhängige Auswahl | Manuell gewähltes Gegnerprofil, Kaderattributübersicht eines Gegners und separat ausgewiesener Auswahlbonus. |
+| 9 | Wechsel und Ausfälle | Vorschläge für Führung/Rückstand, eindeutige Ein-/Auswechslungen und komplette Neuoptimierung bei Ausfall eines Starters. |
+| 10 | Profile und Verlauf | Benannte Profile, automatische Wiederherstellung pro Datensatz, JSON-Import/Export, bis zu fünf gefilterte Browser-Snapshots und Vergleich früherer Kaderstände/Nominierungen. |
+
+### Nominierungsmodell
+
+Ein binäres Zuordnungsmodell wählt **genau** die angegebene Spielerzahl, jeden Spieler höchstens einmal, und weist jeden Nominierten genau einem der elf taktischen Kaderplätze zu. Torhüterzahl ist exakt. Jeder der zehn Feldplätze erhält mindestens `floor((Kadergröße−Torhüterzahl)/10)` Spieler, höchstens die aufgerundete Zahl. Beispiel 26/3: zwei bis drei Spieler je Feldplatz und drei Torhüter; Beispiel 55/5: fünf Spieler je Feldplatz und fünf Torhüter. Benutzerdefinierte Rollen, Positionsvertrautheit, bestätigte Verfügbarkeit, Spielberechtigung und Vereinsregistrierungsregeln bleiben wirksam. Ein Spieler kann durch Flexibilität zusätzliche Positionen abdecken, zählt aber in dieser Optimierung nur auf einem Platz.
+
+Für die Startelf gelten weiterhin die unten beschriebenen Qualitäts- und Balancegrenzen. Die Mindestqualität der Startelf ist keine zusätzliche Mindestqualität jedes einzelnen Nachrückers im größeren Kader. Bei unbesetzbaren Vorgaben wird ein Fehler angezeigt; die App mischt keine anderen Nationalitäten oder Vereinsgruppen hinzu und liefert keinen still verkleinerten Kader. Eine Nominierung wird erst mit **Diese Auswahl für Startelf verwenden** zum aktiven Auswahlpool.
+
+### Prüfungen und Grenzen
+
+- **Nationalität ist keine Spielberechtigung.** Die Liste enthält alle gelesenen Nationen-IDs. Landnamen können über `nation_names` im JSON ergänzt werden. Unter **Prüfen** bestätigst du die Berechtigung für die gerade gewählte Nation. Explizit nicht spielberechtigte Spieler sind ausgeschlossen; ungeprüfte bleiben im Entwurfsmodus sichtbar und werden im strengen Modus ausgeschlossen.
+- Registrierungsregeln werden manuell für den betreffenden Wettbewerb eingegeben. Die App behauptet nicht, alle Wettbewerbsregeln oder Nationalteam-Bindungen aus dem Save zu erkennen. Homegrown-Mindestzahlen zählen nur bestätigte Angaben. Ein unbekannter Ausländerstatus zählt bei gesetzter Obergrenze vorsichtig als Ausländer.
+- Die Ablöse `scout_cost` muss bestätigt sein und dieselbe Einheit wie das Budget verwenden. `market_value_raw` aus fmsave ist ausdrücklich keine bestätigte Ablöse und wird nicht als solche behandelt. Kandidaten mit unbekannten Kosten werden separat aufgeführt.
+- Unabhängige Formationen werden nach minimalem schematischem Positionswechsel zugeordnet. Du kannst jede Positionspaarung manuell ändern. Danach prüft die Optimierung echte Positionsvertrautheit; nicht jede Formationskombination ist mit jedem Kader besetzbar.
+- Gegnerprofile `high_press`, `aerial`, `low_block`, `pace` bevorzugen passende Attributgruppen mit höchstens ±5 Punkten. Kaderattribute des Gegners belegen kein tatsächlich beobachtetes Spielsystem. Der Bonus ist ein transparentes App-Modell.
+- Rotation ist eine Planung, keine echte FM-Simulation: 8 Fitnesspunkte Erholung pro Tag, 16 Punkte Verbrauch pro 90 Minuten, maximal 30 Auswahlpunkte Belastungsabzug aus den letzten sieben Tagen. Unbekannte Fitness bleibt unbekannt. Starter werden für die eingetragene Dauer geplant; Wechsel sind dort noch nicht eingerechnet.
+- Benannte Profile werden im Browser gespeichert (maximal 20), Snapshots ebenfalls (maximal fünf mit jeweils bis zu 3.000 Spielern). Vollständige Kaderdaten können als JSON exportiert werden. Profiles aus einem anderen Datensatz übernehmen keine ungeprüften Spielerfixierungen oder personenbezogenen Bestätigungen.
+- Save-Vergleiche nutzen Datenbank-ID plus Geburtsdatum, sonst lokale ID und Name. Ohne sichere Datenbankidentität nur Stände derselben Karriere vergleichen. Fehlende Werte werden nicht als Null interpretiert. Kaderzugänge/-abgänge beziehen sich auf die verglichenen Filter, nicht automatisch auf tatsächlich erfolgte Transfers.
+
+## Weitere Funktionen
 
 - `.fm`-Import über **fmsave 0.5.11** oder Import/Export des dokumentierten JSON-Formats.
 - Kaderauswahl **Senior Squad**, **2nd Squad**, **U19 Squad**, alle Kader oder nicht zugeordnet. Der Filter gilt für Startelf, Bank, Alternativen und Spielerliste.
@@ -31,7 +65,7 @@ Auf macOS/Linux alternativ `sh start.sh`. Bei einem Update Abhängigkeiten erneu
 - Fünf Grundformationen: 4-3-3 DM, 4-2-3-1, 4-4-2, 3-4-3, 3-5-2.
 - Jeder taktische Platz besitzt getrennte IP-/OOP-Positionen und Rollen. Standard ist **Automatisch**: Für jeden Spieler und jeden Platz werden die kompatiblen IP- und OOP-Rollen einzeln bewertet und die besten übernommen. Konkret ausgewählte Rollen bleiben pro Phase fixiert. **Alle Rollen automatisch wählen** setzt die manuellen Rollenbindungen zurück. Die Vorschau unter dem Rollenfeld zeigt die tatsächlich ausgewählte Rolle. Jede Tabellenzeile bezeichnet denselben Spieler in beiden Phasen. OOP-Positionen können individuell geändert werden.
 - Spieler auf dem Feld, auf der Bank und unter den Alternativen zeigen ihre **IP- und OOP-Rolle gleichzeitig**. Eine zusätzliche Startelftabelle zeigt beide vollständigen Rollennamen; die Spieleranalyse benennt beide Phasen ausdrücklich. Diese Rollen gehören zum jeweiligen taktischen Einsatz, nicht pauschal zum Spieler.
-- Ausgewählter, erweiterbarer FM26-Rollenkatalog mit getrennten IP-/OOP-Listen, u. a. Inside Forward, Free Role, Deep-Lying Playmaker, Wide Outlet Winger und Dropping Defensive Midfielder; keine FM24-Duties. Nicht alle FM26-Rollen sind enthalten.
+- FM26-Rollenkatalog mit 40 IP- und 39 OOP-Rollen und getrennten Listen, u. a. Inside Forward, Free Role, Deep-Lying Playmaker, Wide Outlet Winger und Dropping Defensive Midfielder; keine FM24-Duties. Die Referenzliste ist in den Quellen verlinkt; keine FM24-Duties.
 - Vereinfilter und Auswahl aller eingelesenen primären und weiteren Nationalitäts-IDs. ID-Namen können im JSON mit `nation_names` ergänzt werden. Nationalität ist kein Nachweis der Nationalteam-Spielberechtigung.
 - Namen einzeln sowie Startelf und Bank gesammelt kopieren.
 - Manuelle Verfügbarkeit: ungeprüft, verfügbar, verletzt, gesperrt, nicht verfügbar. Änderungen werden beim Kaderexport mitgesichert.
@@ -84,7 +118,7 @@ Bekannte Kennzahlen werden gleich gewichtet und gekappt. Bei wenigen Saisonminut
 
 Verlässlichkeit = 50 % Notenkonstanz (`100 − 35 × Standardabweichung`, ab drei Noten), 30 % Saisonminuten (`100 × Minuten/900`, gekappt), 20 % zeitgewichtete Evidenz (`100 × Σw/8`, gekappt). Form-Datenvertrauen ist ein separat ausgewiesener heuristischer Abdeckungswert, keine statistisch kalibrierte Wahrscheinlichkeit.
 
-Bei automatischer Rollenwahl wird die beste kompatible Rolle für das jeweilige Spielerprofil ermittelt, bevor dessen Spieler-Platz-Score in die globale Optimierung eingeht. Das Formziel verwendet aktuelle Attribute, das Potenzialziel das beschriebene zukünftige Attribut-Szenario. Die berechnete Rollenwahl wird zusammen mit dem Score auf Startelf, Bank, Alternativen und Vorschau übernommen. Vorgegebene Positionspaare bleiben erhalten. Ohne Auto-Flag bleiben bestehende API-Aufrufe bei fixierten Rollen. Gleiche optimale Rollen dürfen erhalten bleiben; ein Wechsel des Spielers oder Optimierungsziels erzwingt keine künstlich anderen Rollen. Der kleine Rollenkatalog bietet auf manchen Positionen nur eine zulässige Rolle.
+Bei automatischer Rollenwahl wird die beste kompatible Rolle für das jeweilige Spielerprofil ermittelt, bevor dessen Spieler-Platz-Score in die globale Optimierung eingeht. Das Formziel verwendet aktuelle Attribute, das Potenzialziel das beschriebene zukünftige Attribut-Szenario. Die berechnete Rollenwahl wird zusammen mit dem Score auf Startelf, Bank, Alternativen und Vorschau übernommen. Vorgegebene Positionspaare bleiben erhalten. Ohne Auto-Flag bleiben bestehende API-Aufrufe bei fixierten Rollen. Gleiche optimale Rollen dürfen erhalten bleiben; ein Wechsel des Spielers oder Optimierungsziels erzwingt keine künstlich anderen Rollen. DCL/DCR stehen für äußere Innenverteidigerplätze; spezielle breite Innenverteidigerrollen werden nicht auf dem zentralen DC-Platz angeboten.
 
 IP-/OOP-Eignung: gewichteter Mittelwert der im Rollenkatalog hinterlegten Attribute, mit `(Attribut−1)/19 × 100`. Position: der niedrigere Vertrautheitswert beider Phasen × 5. Einsatzbereitschaft: 70 % Fitness und 30 % Match Sharpness.
 
@@ -136,7 +170,7 @@ Die Zuordnung wird beim JSON-Export im Feld `squad_mappings` gesichert und beim 
 {"squad_mappings": {"club-1": {"team-101": "senior", "team-102": "second", "team-103": "u19"}}}
 ```
 
-Bei Spielern ohne lesbare Team-ID bleibt nur eine explizite `squad`-Angabe im JSON. Die Demo enthält alle drei Kader mit je 28 erfundenen Spielern.
+Bei Spielern ohne lesbare Team-ID bleibt nur eine explizite `squad`-Angabe im JSON. Die Demo enthält alle drei Kader mit je 28 erfundenen Spielern bei einem Verein sowie 28 zusätzliche Spieler eines anderen Vereins. Die bestätigten Beispielprüfungen sind frei erfundene Demodaten.
 
 ### JSON-Schema (normalisiertes App-Format)
 
@@ -173,6 +207,9 @@ Browser → lokaler Python-HTTP-Server → fmsave-Adapter → normalisierte Spie
 ```
 
 - `catalog.py`: Positions- und Rollenprofile sowie Formationen.
+- `planning.py`: Kadernominierung, Abdeckung, Scouting, Vergleiche, Formationstausch, Gegner, Rotation und Szenarien.
+- `selection.py`: gemeinsame Kontext- und Berechtigungsfilter.
+- `web/manager.js`: Manager-Werkzeuge, Prüfungen, Profile und Snapshots.
 - `engine.py`: Validierung, Formmodell, Entwicklungsszenarien und Optimierung.
 - `importer.py`: Spielstandadapter; übernimmt keine unbekannten Codes als bekannte Fakten.
 - `server.py`: lokale API und Auslieferung der Oberfläche.
@@ -184,7 +221,7 @@ python -m unittest discover -s tests -v
 node --check web/app.js
 ```
 
-Testumfang: 43 automatisierte Tests mit synthetischen Spielern, Adapter mit kontrollierten Datensätzen, HTTP-API und Fehlerfällen. Zusätzlich wurden Zielwechsel, Kopieren, Spieleranalyse, OOP-Ansicht, Formationswechsel, Verfügbarkeitsänderung und mobile Seitenbreite in Chromium geprüft. Zusätzlicher Praxistest am 25.10.2026: Ein echter lokaler FM26-Spielstand wurde über den Adapter erfolgreich eingelesen. Beide Optimierungsziele lieferten elf Starter und neun Ersatzspieler; Startelf und mehrere IP-/OOP-Rollen unterschieden sich zwischen den Zielen. Die Originaldatei und die persönlichen Spielerdaten wurden nicht ins Repository übernommen. Dieser Test belegt den getesteten Spielstand, keine allgemeine Kompatibilität mit sämtlichen FM-Builds. Ein Windows-Systemtest steht weiterhin aus.
+Testumfang: 83 automatisierte Tests mit synthetischen Spielern, Adapter mit kontrollierten Datensätzen, HTTP-API und Fehlerfällen. Zusätzlich wurden Zielwechsel, Kopieren, Spieleranalyse, OOP-Ansicht, Formationswechsel, Verfügbarkeitsänderung und mobile Seitenbreite in Chromium geprüft. Ein zweiter Browserlauf prüft alle zehn Manager-Bereiche einschließlich Vereins-26er-Kader, Nationalteam-55er-Kader, automatischer Neunominierung, Profile, Neustart und Export. Zusätzlicher Praxistest am 25.10.2026: Ein echter lokaler FM26-Spielstand wurde über den Adapter erfolgreich eingelesen. Beide Optimierungsziele lieferten elf Starter und neun Ersatzspieler; Startelf und mehrere IP-/OOP-Rollen unterschieden sich zwischen den Zielen. Die erweiterten Werkzeuge wurden ebenfalls mit diesem Spielstand geprüft: Vereins-26er-Kader, Nationalteam-26er-/55er-Entwurf, elf Tiefenpositionen, 33 externe Kandidaten, fünf besetzbare Grundformationen, zwei geplante Spiele, Ausfallszenario und Gegnerprofil. Bei Nationalteam-Entwürfen wurden ungeklärte Spielberechtigungen ausdrücklich gemeldet. Die Originaldatei und die persönlichen Spielerdaten wurden nicht ins Repository übernommen. Dieser Test belegt den getesteten Spielstand, keine allgemeine Kompatibilität mit sämtlichen FM-Builds. Ein Windows-Systemtest steht weiterhin aus.
 
 Optionaler Browser-Smoke-Test (zusätzlich Node.js benötigt):
 
@@ -192,9 +229,10 @@ Optionaler Browser-Smoke-Test (zusätzlich Node.js benötigt):
 npm install --no-save playwright
 npx playwright install chromium
 node tests/browser.cjs
+node tests/manager-browser.cjs
 ```
 
-Der Test startet seinen eigenen lokalen Server auf Port 18765. Er liest keine echten Spielstände.
+Die Tests starten ihre eigenen lokalen Server auf Port 18765 bzw. 18766. Er liest keine echten Spielstände.
 
 Der Server bindet ausschließlich `127.0.0.1`, prüft Host/Origin und eine eigene Request-Kennung. Er ist für die lokale Einzelnutzung vorgesehen. Spielstände werden temporär zum Lesen abgelegt und danach entfernt; im Arbeitsspeicher bleibt der gelesene Kader bis zum nächsten Import oder Beenden. JSON-Export sichert den Kader bewusst auf deinem Gerät. Keine `.fm`-Dateien oder persönlichen Kaderdaten gehören ins öffentliche Repository.
 

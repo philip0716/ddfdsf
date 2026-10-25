@@ -43,6 +43,9 @@ def from_save(path):
                 attrs={k:v for k,v in asdict(p.attributes).items() if 1<=v<=20}
                 pa=p.ability.potential
                 players.append(dict(id=str(p.uid),name=p.name or f'Spieler {p.uid}',age=p.age,
+                    unique_id=getattr(p,'unique_id',None),birth_date=p.birth_date.isoformat() if getattr(p,'birth_date',None) else None,
+                    scout_cost=None,market_value_raw=getattr(p,'transfer_value',None),
+                    registration={},eligibility={},on_loan=getattr(p,'on_loan',None),
                     ca=p.ability.current if 1<=p.ability.current<=200 else None,
                     pa=pa if pa is not None and 1<=pa<=200 else None,
                     club_id=str(p.club_uid) if p.club_uid is not None else '',club=p.club_name or 'Ohne Vereinsname',

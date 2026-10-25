@@ -11,6 +11,7 @@ from catalog import ROLES, FORMATIONS, POSITIONS, slots_for
 from demo import demo
 from engine import validate, optimize
 from importer import from_save
+from planning import run_action
 
 ROOT=Path(__file__).parent/'web'
 DATA=demo()
@@ -37,7 +38,7 @@ class Handler(BaseHTTPRequestHandler):
         if path=='/api/data':
             with LOCK: data=DATA
             return self.send(200,encode(data))
-        files={'/':('index.html','text/html; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8')}
+        files={'/':('index.html','text/html; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/manager.js':('manager.js','text/javascript; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8')}
         if path not in files: return self.send(404,encode({'error':'Nicht gefunden.'}))
         name,kind=files[path]; self.send(200,(ROOT/name).read_bytes(),kind)
     def do_POST(self):
@@ -73,6 +74,9 @@ class Handler(BaseHTTPRequestHandler):
                 data=demo()
                 with LOCK: DATA=data
                 return self.send(200,encode(data))
+            if path=='/api/planning':
+                with LOCK: data=DATA
+                return self.send(200,encode(run_action(data,payload)))
             if path=='/api/optimize':
                 with LOCK: data=DATA
                 result=optimize(data,payload)
