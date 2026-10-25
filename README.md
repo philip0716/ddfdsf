@@ -184,7 +184,7 @@ python -m unittest discover -s tests -v
 node --check web/app.js
 ```
 
-Testumfang: 40 automatisierte Tests mit synthetischen Spielern, Adapter mit kontrollierten Datensätzen, HTTP-API und Fehlerfällen. Zusätzlich wurden Zielwechsel, Kopieren, Spieleranalyse, OOP-Ansicht, Formationswechsel, Verfügbarkeitsänderung und mobile Seitenbreite in Chromium geprüft. Kein erfolgreich gelesener echter `.fm`-Spielstand und kein Windows-Systemtest sind durch diese Tests belegt. Echte Save-Kompatibilität muss mit dem jeweiligen Spielstand geprüft werden.
+Testumfang: 40 automatisierte Tests mit synthetischen Spielern, Adapter mit kontrollierten Datensätzen, HTTP-API und Fehlerfällen. Zusätzlich wurden Zielwechsel, Kopieren, Spieleranalyse, OOP-Ansicht, Formationswechsel, Verfügbarkeitsänderung und mobile Seitenbreite in Chromium geprüft. Zusätzlicher Praxistest am 25.10.2026: Ein echter lokaler FM26-Spielstand wurde über den Adapter erfolgreich eingelesen. Beide Optimierungsziele lieferten elf Starter und neun Ersatzspieler; Startelf und mehrere IP-/OOP-Rollen unterschieden sich zwischen den Zielen. Die Originaldatei und die persönlichen Spielerdaten wurden nicht ins Repository übernommen. Dieser Test belegt den getesteten Spielstand, keine allgemeine Kompatibilität mit sämtlichen FM-Builds. Ein Windows-Systemtest steht weiterhin aus.
 
 Optionaler Browser-Smoke-Test (zusätzlich Node.js benötigt):
 
