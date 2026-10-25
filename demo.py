@@ -1,5 +1,6 @@
 """Deterministic synthetic squad, with distinct senior and prospect lineups."""
 import random
+from copy import deepcopy
 from datetime import date,timedelta
 from catalog import POSITIONS, ROLES
 
@@ -14,7 +15,7 @@ def demo():
             index=i*2+int(talent)
             ca=105 if talent else 155; pa=185 if talent else 160
             p=dict(id=str(index+1),name=names[i]+(' Junior' if talent else ''),age=18 if talent else 30,
-                   ca=ca,pa=pa,club='FC Demo Wien',club_id='demo',nation_ids=[1 if i%3 else 2],
+                   squad='senior',team_id='demo-senior',ca=ca,pa=pa,club='FC Demo Wien',club_id='demo',nation_ids=[1 if i%3 else 2],
                    positions={pos:20},attributes={a:rng.randint(9,12) if talent else rng.randint(13,17) for a in attributes},
                    professionalism=18 if talent else 14,training_environment=80,development_trend=70,
                    fitness=97,sharpness=90,status='available',matches=[],season={})
@@ -29,6 +30,15 @@ def demo():
                 expected_goals_per_90=.5,expected_assists_per_90=.2,shots_on_target_per_90=1.4,
                 tackles_completed_per_90=2,interceptions_per_90=1.4,headers_won_per_90=3,
                 progressive_passes_per_90=6,key_passes_per_90=1.7,save_percent=76,expected_goals_prevented_per_90=.1)
+            players.append(p)
+    for squad,age,ca,pa in [('second',22,100,160),('u19',17,85,185)]:
+        for original in list(players[:28]):
+            p=deepcopy(original)
+            p.update(id=squad+'-'+p['id'],name=p['name']+' ('+('II' if squad=='second' else 'U19')+')',
+                     squad=squad,team_id='demo-'+squad,age=age,ca=ca,pa=pa)
+            p['attributes']={k:max(1,v-3) for k,v in p['attributes'].items()}
+            p['season'].update(average_rating=6.6,minutes=400)
+            for m in p['matches']: m['rating']=6.5
             players.append(p)
     return dict(players=players,date=today.isoformat(),source='DEMO · frei erfundene Spieler',
                 managed_clubs=['demo'],nation_names={'1':'Österreich (Demo)','2':'Deutschland (Demo)'},

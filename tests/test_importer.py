@@ -25,7 +25,7 @@ class ImportTests(unittest.TestCase):
                            (PlayerSeasonStats,['player_uid','kind','minutes','average_rating'])]:
             for field in fields:self.assertIn(field,cls.__dataclass_fields__)
     def test_join_scales_missing_pa_and_ambiguous_suspension(self):
-        player=NS(uid=99,name='Test',age=18,ability=NS(current=105,potential=None),club_uid=7,
+        player=NS(team_id=77,team_slot=1,uid=99,name='Test',age=18,ability=NS(current=105,potential=None),club_uid=7,
                   club_name='Testclub',nation_id=1,second_nation_ids=(2,),positions=Positions(),
                   attributes=Attrs(),raw_condition=9200,raw_match_sharpness=8100,
                   personality=NS(professionalism=16),suspensions=[NS()])
@@ -36,6 +36,7 @@ class ImportTests(unittest.TestCase):
                 player_season_stats=lambda:stats,managed_clubs=lambda:[NS(club_uid=7)])
         with patch('fmsave.open',return_value=nullcontext(save)):data=from_save('synthetic.fm')
         p=data['players'][0]
+        self.assertEqual(p['team_id'],'77');self.assertEqual(p['squad'],'unknown');self.assertEqual(p['team_slot'],1)
         self.assertEqual(p['id'],'99');self.assertEqual(p['nation_ids'],[1,2])
         self.assertEqual(p['fitness'],92);self.assertEqual(p['sharpness'],81)
         self.assertIsNone(p['pa']);self.assertEqual(p['season']['minutes'],600)

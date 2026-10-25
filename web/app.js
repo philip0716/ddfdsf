@@ -6,16 +6,28 @@ function node(tag,text,cls){const n=document.createElement(tag);if(text!==undefi
 function message(text){$('message').textContent=text;}
 async function api(path,payload,raw=false){const response=await fetch('/api/'+path,{method:payload===undefined?'GET':'POST',headers:payload===undefined?{}:{'Content-Type':raw?'application/octet-stream':'application/json','X-FM26-Client':'local'},body:payload===undefined?undefined:raw?payload:JSON.stringify(payload)});const body=await response.json();if(!response.ok)throw new Error(body.error||'Anfrage fehlgeschlagen.');return body;}
 function option(select,value,text){const o=node('option',text);o.value=value;select.append(o);}
-function selectedPlayers(){return data.players.filter(p=>(!$('club').value||String(p.club_id)===$('club').value)&&(!$('nation').value||(p.nation_ids||[]).map(String).includes($('nation').value)));}
+const squadLabels={senior:'Senior Squad',second:'2nd Squad',u19:'U19 Squad',unknown:'Nicht zugeordnet'};
+function playerSquad(p){return data.squad_mappings?.[String(p.club_id||'')]?.[String(p.team_id)]||p.squad||'unknown';}
+function selectedPlayers(){return data.players.filter(p=>(!$('club').value||String(p.club_id)===$('club').value)&&(!$('squad').value||playerSquad(p)===$('squad').value)&&(!$('nation').value||(p.nation_ids||[]).map(String).includes($('nation').value)));}
 function invalidate(){revision++;result=null;document.querySelector('.results').classList.add('pending');$('copy-xi').disabled=true;$('copy-bench').disabled=true;$('score').textContent='—';$('defense').textContent='—';clearTimeout(timer);}
 function schedule(){invalidate();renderRoster();timer=setTimeout(calculate,250);}
 function renderData(){
- overrides={};result=null;
+ overrides={};result=null;data.squad_mappings=data.squad_mappings||{};$('squad').value='';
  $('source').textContent=data.source||'JSON-Import';$('count').textContent=data.players.length;$('date').textContent='Stand: '+data.date;
  const clubs=new Map(data.players.map(p=>[String(p.club_id||''),p.club||'Ohne Verein']));$('club').replaceChildren();option($('club'),'','Alle Vereine');for(const [id,name]of [...clubs].sort((a,b)=>a[1].localeCompare(b[1])))if(id)option($('club'),id,name);
  const defaultClub=(data.managed_clubs||[]).find(c=>clubs.has(String(c)));if(defaultClub)$('club').value=defaultClub;
  $('nation').replaceChildren();option($('nation'),'','Alle Nationalitäten');const nations=[...new Set(data.players.flatMap(p=>p.nation_ids||[]).map(String))].sort((a,b)=>((data.nation_names||{})[a]||a).localeCompare((data.nation_names||{})[b]||b));for(const id of nations)option($('nation'),id,(data.nation_names||{})[id]||'Nation-ID '+id);
  $('notices').replaceChildren(...(data.notices||[]).map(t=>node('p',t)));renderRoster();schedule();
+}
+function renderSquadMapping(){
+ const root=$('squad-mapping');root.replaceChildren();
+ const players=data.players.filter(p=>!$('club').value||String(p.club_id)===$('club').value);
+ const teams=new Map();for(const p of players){if(p.team_id==null)continue;const key=JSON.stringify([String(p.club_id||''),String(p.team_id)]);if(!teams.has(key))teams.set(key,[]);teams.get(key).push(p);}
+ let shown=0;for(const [key,members]of teams){if(shown++>=100)break;const [club,team]=JSON.parse(key),p=members[0],label=node('label',(p.club||'Ohne Verein')+' · Team '+team+' · '+members.length+' Spieler');
+ const select=node('select');select.setAttribute('aria-label','Kader für Team '+team);for(const [v,t]of Object.entries(squadLabels))option(select,v,t);
+ const labels=[...new Set(members.map(playerSquad))];select.value=labels.length===1?labels[0]:'unknown';select.onchange=()=>{data.squad_mappings[club]=data.squad_mappings[club]||{};data.squad_mappings[club][team]=select.value;schedule();};label.append(select);root.append(label);}
+ if(!teams.size)root.append(node('p','Keine Team-IDs vorhanden. Kaderangabe über das JSON-Feld squad importieren.','hint'));
+ if(teams.size>100)root.append(node('p','Bitte einen Verein auswählen, um die weiteren Teams zuzuordnen.','hint'));
 }
 function renderTactics(){
  $('tactics').replaceChildren();slots.forEach((s,i)=>{const tr=node('tr');tr.append(node('td',String(i+1).padStart(2,'0')));for(const ph of ['ip','oop']){
@@ -25,7 +37,7 @@ function renderTactics(){
  fill();pos.onchange=()=>{s[ph+'_position']=pos.value;fill();schedule();};select.onchange=()=>{s[ph+'_role']=select.value;schedule();};rt.append(select);tr.append(rt);
  }$('tactics').append(tr);});
 }
-function config(){return {slots,objective:$('objective').value,club:$('club').value,nation:$('nation').value,bench_size:Number($('bench-size').value),min_position:Number($('min-position').value),min_defense:Number($('min-defense').value),min_fitness:Number($('min-fitness').value),horizon:Number($('horizon').value),only_confirmed:$('confirmed').checked,overrides};}
+function config(){return {slots,objective:$('objective').value,club:$('club').value,nation:$('nation').value,squad:$('squad').value,squad_mappings:data.squad_mappings,bench_size:Number($('bench-size').value),min_position:Number($('min-position').value),min_defense:Number($('min-defense').value),min_fitness:Number($('min-fitness').value),horizon:Number($('horizon').value),only_confirmed:$('confirmed').checked,overrides};}
 async function calculate(){
  if(loading)return;
  const own=++revision;const button=$('calculate');button.disabled=true;button.textContent='Elf wird berechnet …';message('');
@@ -62,8 +74,8 @@ function detail(c){
  if(!$('detail').open)$('detail').showModal();
 }
 function renderRoster(){
- if(!data)return;const text=$('search').value.toLowerCase(),eligible=selectedPlayers().filter(p=>p.name.toLowerCase().includes(text));const rows=eligible.slice(0,200);$('roster').replaceChildren();const selected=new Set(result?result.xi.map(c=>c.player.id):[]);
- rows.forEach(p=>{const tr=node('tr');const name=node('td');name.append(node('b',p.name),node('small',(selected.has(p.id)?'Startelf · ':'')+(p.club||'Ohne Verein')));tr.append(name,node('td',Object.entries(p.positions).filter(([k,v])=>v>=12).map(([k])=>k.toUpperCase()).join(' / ')),node('td',p.age??'?'),node('td',(p.ca??'?')+' / '+(p.pa??'?')),node('td',p.fitness==null?'Unbekannt':p.fitness.toFixed(0)+' %'));
+ if(!data)return;renderSquadMapping();const filtered=selectedPlayers();$('count').textContent=filtered.length;$('squad-info').textContent=filtered.length+' Spieler im Filter · '+data.players.filter(p=>(!$('club').value||String(p.club_id)===$('club').value)&&playerSquad(p)==='unknown').length+' im Verein noch nicht zugeordnet.';const text=$('search').value.toLowerCase(),eligible=selectedPlayers().filter(p=>p.name.toLowerCase().includes(text));const rows=eligible.slice(0,200);$('roster').replaceChildren();const selected=new Set(result?result.xi.map(c=>c.player.id):[]);
+ rows.forEach(p=>{const tr=node('tr');const name=node('td');name.append(node('b',p.name),node('small',(selected.has(p.id)?'Startelf · ':'')+(p.club||'Ohne Verein')+' · '+squadLabels[playerSquad(p)]));tr.append(name,node('td',Object.entries(p.positions).filter(([k,v])=>v>=12).map(([k])=>k.toUpperCase()).join(' / ')),node('td',p.age??'?'),node('td',(p.ca??'?')+' / '+(p.pa??'?')),node('td',p.fitness==null?'Unbekannt':p.fitness.toFixed(0)+' %'));
  const td=node('td'),s=node('select');s.setAttribute('aria-label','Verfügbarkeit '+p.name);for(const [v,t]of [['unknown','Ungeprüft'],['available','Verfügbar'],['injured','Verletzt'],['suspended','Gesperrt'],['unavailable','Nicht verfügbar']])option(s,v,t);s.value=overrides[p.id]||p.status||'unknown';s.onchange=()=>{overrides[p.id]=s.value;schedule();};td.append(s);tr.append(td);const cp=node('td'),button=node('button','Kopieren');button.onclick=()=>copy(p.name);cp.append(button);tr.append(cp);$('roster').append(tr);});
  $('roster-count').textContent=rows.length+' von '+eligible.length+' Spielern im aktuellen Filter angezeigt'+(eligible.length>200?' · Suche eingrenzen. Die Optimierung nutzt den gesamten Filter.':'.');
 }
@@ -76,7 +88,7 @@ async function importFile(){
 $('upload').onchange=importFile;$('calculate').onclick=()=>{invalidate();calculate();};
 $('demo').onclick=async()=>{if(loading)return;invalidate();try{data=await api('demo',{});renderData();}catch(e){message(e.message);}};
 $('objective').onchange=()=>{const potential=$('objective').value==='potential';$('objective-help').textContent=potential?'PA, Entwicklungsspielraum und zukünftige Rollenpassung stehen im Vordergrund.':'Aktuelle Leistungen zählen am stärksten. Rollen, Positionen und Fitness bleiben Teil der Auswahl.';$('horizon').disabled=!potential;schedule();};
-for(const id of ['club','nation','bench-size','horizon','min-position','min-defense','min-fitness','confirmed'])$(id).onchange=schedule;
+for(const id of ['club','nation','squad','bench-size','horizon','min-position','min-defense','min-fitness','confirmed'])$(id).onchange=schedule;
 $('formation').onchange=()=>{slots=structuredClone(catalog.formations[$('formation').value]);renderTactics();schedule();};
 $('phase-ip').onclick=()=>{phase='ip';$('phase-ip').classList.add('active');$('phase-oop').classList.remove('active');renderPitch();};$('phase-oop').onclick=()=>{phase='oop';$('phase-oop').classList.add('active');$('phase-ip').classList.remove('active');renderPitch();};
 $('copy-xi').onclick=()=>result&&copy(result.xi.map(c=>c.player.name).join('\n'));$('copy-bench').onclick=()=>result&&copy(result.bench.map(c=>c.player.name).join('\n'));$('search').oninput=renderRoster;$('close-detail').onclick=()=>$('detail').close();

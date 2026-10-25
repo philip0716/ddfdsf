@@ -21,7 +21,7 @@ class ApiTests(unittest.TestCase):
         with urlopen(r) as response:return response.status,response.read()
     def test_demo_and_optimization_round_trip(self):
         status,raw=self.request('/api/demo',{})
-        data=json.loads(raw);self.assertEqual(len(data['players']),28)
+        data=json.loads(raw);self.assertEqual(len(data['players']),84)
         _,raw=self.request('/api/optimize',dict(slots=slots_for('4-3-3 DM'),objective='potential'))
         self.assertEqual(len(json.loads(raw)['xi']),11)
     def test_invalid_json_import_preserves_previous_data(self):

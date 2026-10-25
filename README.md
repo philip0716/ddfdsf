@@ -26,6 +26,7 @@ Auf macOS/Linux alternativ `sh start.sh`. Bei einem Update Abhängigkeiten erneu
 ## Funktionen
 
 - `.fm`-Import über **fmsave 0.5.11** oder Import/Export des dokumentierten JSON-Formats.
+- Kaderauswahl **Senior Squad**, **2nd Squad**, **U19 Squad**, alle Kader oder nicht zugeordnet. Der Filter gilt für Startelf, Bank, Alternativen und Spielerliste.
 - Vollständige Neuberechnung von Startelf, Einzelplatzalternativen und Bank bei Änderung von Ziel, Formation, Rollen, Filter oder Verfügbarkeit.
 - Fünf Grundformationen: 4-3-3 DM, 4-2-3-1, 4-4-2, 3-4-3, 3-5-2.
 - Jeder taktische Platz besitzt getrennte IP-/OOP-Positionen und Rollen. Jede Tabellenzeile bezeichnet denselben Spieler in beiden Phasen. OOP-Positionen können individuell geändert werden.
@@ -120,6 +121,20 @@ Der Adapter nutzt die öffentlichen Leser `players()`, `player_match_stats()`, `
 
 Der Parser unterstützt nicht jeden FM-Build und nicht jedes Feld. Die gespeicherte Einzelspielhistorie ist unvollständig; Freundschafts-, Jugend- und Länderspiele gehören nicht zum verwendeten Einzelspielleser. CA/PA und mehrere Einzelspielfelder sind in fmsave noch als **unbestätigt** eingestuft. Gespeicherte Sperren können veraltet oder wettbewerbsspezifisch sein; der Adapter meldet sie als Prüfhinweis und leitet keine pauschale Sperre für das nächste Spiel daraus ab. Aktuelle Verletzung/Verfügbarkeit muss manuell bestätigt werden. Taktische Zahlen aus dem Save werden nicht als vermeintlich bekannte Rollen interpretiert: Formation und Rollen werden in der App gewählt.
 
+### Kaderzuordnung
+
+Nach dem Verein wählst du **Senior Squad**, **2nd Squad** oder **U19 Squad**. Ohne Auswahl gilt **Alle Kader**, damit alte JSON-Dateien weiterhin funktionieren. Ist der gewählte Kader zu klein oder fehlen Positionen, erscheint eine Fehlermeldung; andere Kader werden nicht automatisch zugemischt.
+
+fmsave liefert `team_id` und `team_slot`, bestätigt aber noch nicht, ob ein gespeicherter Slot Reserve oder Jugend bedeutet. Daher übernimmt der Import beide Rohwerte, markiert den Kader zunächst als unbekannt und bietet **Kaderzuordnung prüfen** an. Dort ordnest du pro Verein die tatsächlichen Team-IDs nach Abgleich mit dem Spiel zu. Es wird weder `Slot 1 = Reserve` noch `Alter unter 19 = U19` angenommen. Auch ein 17-Jähriger kann im Senior Squad stehen.
+
+Die Zuordnung wird beim JSON-Export im Feld `squad_mappings` gesichert und beim erneuten Import wiederverwendet. Alternativ können normalisierte Spielerdatensätze `squad` direkt enthalten (`senior`, `second`, `u19`, `unknown`). Explizite Teamzuordnungen haben Vorrang. Beispiel:
+
+```json
+{"squad_mappings": {"club-1": {"team-101": "senior", "team-102": "second", "team-103": "u19"}}}
+```
+
+Bei Spielern ohne lesbare Team-ID bleibt nur eine explizite `squad`-Angabe im JSON. Die Demo enthält alle drei Kader mit je 28 erfundenen Spielern.
+
 ### JSON-Schema (normalisiertes App-Format)
 
 Nicht jeder beliebige fmsave-JSON-Export kann direkt importiert werden. Ein vollständiges Beispiel liefert **Kader als JSON sichern** aus der Demo.
@@ -133,6 +148,7 @@ Nicht jeder beliebige fmsave-JSON-Export kann direkt importiert werden. Ein voll
     "id": "123", "name": "Beispielspieler", "age": 18,
     "ca": 105, "pa": 180,
     "club_id": "club-1", "club": "Beispielverein", "nation_ids": [1],
+    "squad": "senior", "team_id": "team-101",
     "positions": {"mc": 20, "dm": 16},
     "attributes": {"passing": 14, "vision": 13, "decisions": 12},
     "fitness": 95, "sharpness": 85, "status": "unknown",
@@ -165,7 +181,7 @@ python -m unittest discover -s tests -v
 node --check web/app.js
 ```
 
-Testumfang: 28 automatisierte Tests mit synthetischen Spielern, Adapter mit kontrollierten Datensätzen, HTTP-API und Fehlerfällen. Zusätzlich wurden Zielwechsel, Kopieren, Spieleranalyse, OOP-Ansicht, Formationswechsel, Verfügbarkeitsänderung und mobile Seitenbreite in Chromium geprüft. Kein erfolgreich gelesener echter `.fm`-Spielstand und kein Windows-Systemtest sind durch diese Tests belegt. Echte Save-Kompatibilität muss mit dem jeweiligen Spielstand geprüft werden.
+Testumfang: 35 automatisierte Tests mit synthetischen Spielern, Adapter mit kontrollierten Datensätzen, HTTP-API und Fehlerfällen. Zusätzlich wurden Zielwechsel, Kopieren, Spieleranalyse, OOP-Ansicht, Formationswechsel, Verfügbarkeitsänderung und mobile Seitenbreite in Chromium geprüft. Kein erfolgreich gelesener echter `.fm`-Spielstand und kein Windows-Systemtest sind durch diese Tests belegt. Echte Save-Kompatibilität muss mit dem jeweiligen Spielstand geprüft werden.
 
 Optionaler Browser-Smoke-Test (zusätzlich Node.js benötigt):
 

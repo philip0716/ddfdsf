@@ -46,6 +46,8 @@ def from_save(path):
                     ca=p.ability.current if 1<=p.ability.current<=200 else None,
                     pa=pa if pa is not None and 1<=pa<=200 else None,
                     club_id=str(p.club_uid) if p.club_uid is not None else '',club=p.club_name or 'Ohne Vereinsname',
+                    team_id=str(p.team_id) if getattr(p,'team_id',None) is not None else None,
+                    team_slot=getattr(p,'team_slot',None),squad='unknown',
                     nation_ids=list(dict.fromkeys([n for n in [p.nation_id,*p.second_nation_ids] if n is not None])),
                     positions=asdict(p.positions),attributes=attrs,
                     fitness=p.raw_condition/100 if 0<=p.raw_condition<=10000 else None,
@@ -54,7 +56,8 @@ def from_save(path):
                     status='unknown',matches=history[p.uid],season=stats,
                     notes=['Gespeicherte Sperren vorhanden; Gültigkeit für den nächsten Wettbewerb prüfen.'] if p.suspensions else []))
             managed=[str(c.club_uid) for c in save.managed_clubs()]
-            notices += ['FM-Verfügbarkeit wird nicht automatisch bestätigt; bitte im Kader prüfen.',
+            notices += ['Kaderzuordnung: Team-IDs bitte unter Kaderzuordnung prüfen als Senior, 2nd oder U19 bestätigen. Slotnummer und Alter bestimmen keinen Kader.',
+                        'FM-Verfügbarkeit wird nicht automatisch bestätigt; bitte im Kader prüfen.',
                         'Einzelspielhistorie ist unvollständig; keine Freundschafts-, Jugend- oder Länderspiele.',
                         'CA, PA, Namen und Teile der Einzelspielwerte sind im Parser noch unbestätigte Felder.',
                         'Nationennamen benötigen eine zusätzliche ID-Zuordnung; alle gelesenen IDs bleiben auswählbar.']

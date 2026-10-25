@@ -6,6 +6,7 @@ import numpy as np
 from scipy.optimize import milp, Bounds, LinearConstraint
 from scipy.sparse import lil_matrix
 from catalog import ROLES, POSITIONS
+from squads import SQUADS, squad_for, validate_mappings
 
 FORM_WEIGHTS = dict(form=.45, ip=.20, oop=.15, position=.10, readiness=.10)
 POT_WEIGHTS = dict(potential=.27, gap=.21, window=.14, development=.10,
@@ -22,12 +23,15 @@ def validate(data):
         raise ValueError('JSON benötigt eine Liste „players“.')
     if not 1<=len(data['players'])<=100000:
         raise ValueError('Zwischen 1 und 100.000 Spieler erforderlich.')
+    validate_mappings(data.get('squad_mappings',{}))
     ids=set()
     for p in data['players']:
         if not isinstance(p,dict) or not isinstance(p.get('id'),str) or not p['id']:
             raise ValueError('Jeder Spieler benötigt eine nicht leere String-ID.')
         if p['id'] in ids: raise ValueError('Doppelte Spieler-ID: '+p['id'])
         ids.add(p['id'])
+        if p.get('squad') is not None and p['squad'] not in SQUADS: raise ValueError('Ungültiger Kader.')
+        if p.get('team_id') is not None and not isinstance(p['team_id'],(str,int)): raise ValueError('Ungültige Team-ID.')
         if not isinstance(p.get('nation_ids',[]),list): raise ValueError('nation_ids muss eine Liste sein.')
         for field in ['training_environment','development_trend']:
             if p.get(field) is not None and not number(p[field],0,100): raise ValueError('Ungültiger Teilscore: '+field)
@@ -184,12 +188,17 @@ def optimize(data, config):
     if not number(min_fitness,0,100): raise ValueError('Ungültige Fitnessgrenze.')
     bench_size=config.get('bench_size',9)
     if type(bench_size)!=int or not 1<=bench_size<=15: raise ValueError('Bankgröße muss 1–15 sein.')
+    squad=config.get('squad','')
+    if squad and squad not in SQUADS: raise ValueError('Ungültiger Kaderfilter.')
+    mappings=validate_mappings(config.get('squad_mappings',data.get('squad_mappings',{})))
     today=date.fromisoformat(data['date']); overrides=config.get('overrides',{})
     players=[]; excluded=[]
     for raw in sorted(data['players'],key=lambda p:p['id']):
         p=dict(raw); p['status']=overrides.get(p['id'],p.get('status','unknown'))
         if p['status'] not in ['available','unknown','injured','suspended','unavailable']: raise ValueError('Ungültiger Status.')
         if config.get('club') and str(p.get('club_id'))!=str(config['club']): continue
+        p['squad']=squad_for(p,mappings)
+        if squad and p['squad']!=squad: continue
         if config.get('nation') and str(config['nation']) not in [str(n) for n in p.get('nation_ids',[])]: continue
         reason=None
         if p['status'] in ['injured','suspended','unavailable']: reason=p['status']
